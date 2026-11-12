@@ -62,7 +62,7 @@ export const MOCK_INVOICES = [
         category: 'tax',
         severity: 'info',
         title: 'IVA calculado correctamente',
-        description: 'El IVA del 19% coincide con la base gravable de las lÃ­neas.',
+        description: 'El IVA del 19% coincide con la base gravable de las líneas.',
         expected: '$1.976.000',
         found: '$1.976.000',
       },
@@ -105,7 +105,7 @@ export const MOCK_INVOICES = [
   {
     id: 'inv_003',
     invoiceNumber: 'FE-10236',
-    supplierName: 'TecnologÃ­as del PacÃ­fico S.A.',
+    supplierName: 'Tecnologías del Pacífico S.A.',
     supplierNit: '830.987.654-1',
     issueDate: '2026-11-05',
     dueDate: '2026-11-25',
@@ -152,7 +152,7 @@ export const MOCK_INVOICES = [
   {
     id: 'inv_004',
     invoiceNumber: 'FE-10237',
-    supplierName: 'Servicios LogÃ­sticos Andes S.A.S.',
+    supplierName: 'Servicios Logísticos Andes S.A.S.',
     supplierNit: '901.234.567-8',
     issueDate: '2026-11-06',
     dueDate: '2026-12-06',
@@ -166,7 +166,7 @@ export const MOCK_INVOICES = [
     lines: [
       {
         id: 'l1',
-        description: 'Transporte de carga BogotÃ¡ - MedellÃ­n',
+        description: 'Transporte de carga Bogotá - Medellín',
         quantity: 8,
         unitPrice: 400_000,
         ivaRate: 19,
@@ -180,13 +180,13 @@ export const MOCK_INVOICES = [
         severity: 'warning',
         title: 'Sin orden de compra asociada',
         description:
-          'No se encontrÃ³ una OC para este proveedor y concepto. Confirma si el servicio no requerÃ­a OC.',
+          'No se encontró una OC para este proveedor y concepto. Confirma si el servicio no requería OC.',
       },
       {
         id: 'f2',
         category: 'supplier',
         severity: 'warning',
-        title: 'Proveedor no estÃ¡ en el maestro',
+        title: 'Proveedor no está en el maestro',
         description:
           'El NIT 901.234.567-8 no existe en el maestro de proveedores.',
       },
@@ -195,7 +195,7 @@ export const MOCK_INVOICES = [
   {
     id: 'inv_005',
     invoiceNumber: 'FE-10230',
-    supplierName: 'PapelerÃ­a Nacional S.A.',
+    supplierName: 'Papelería Nacional S.A.',
     supplierNit: '860.111.222-3',
     issueDate: '2026-10-28',
     dueDate: '2026-11-27',
@@ -209,7 +209,7 @@ export const MOCK_INVOICES = [
     lines: [
       {
         id: 'l1',
-        description: 'Ãštiles de oficina',
+        description: 'Útiles de oficina',
         quantity: 1,
         unitPrice: 1_200_000,
         ivaRate: 19,
@@ -233,11 +233,11 @@ export const MOCK_INVOICES = [
     receivedAt: '2026-10-26T10:00:00-05:00',
     status: 'rejected',
     rejectionReason:
-      'El valor facturado excede la OC aprobada. El proveedor debe emitir nota crÃ©dito.',
+      'El valor facturado excede la OC aprobada. El proveedor debe emitir nota crédito.',
     lines: [
       {
         id: 'l1',
-        description: 'AdecuaciÃ³n de oficinas, fase 2',
+        description: 'Adecuación de oficinas, fase 2',
         quantity: 1,
         unitPrice: 25_000_000,
         ivaRate: 19,
@@ -250,7 +250,7 @@ export const MOCK_INVOICES = [
         category: 'purchase_order',
         severity: 'error',
         title: 'Excede el valor de la orden de compra',
-        description: 'El valor facturado es superior al mÃ¡ximo autorizado.',
+        description: 'El valor facturado es superior al máximo autorizado.',
         expected: '$23.800.000',
         found: '$29.750.000',
       },

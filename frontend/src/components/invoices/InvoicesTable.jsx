@@ -29,6 +29,7 @@ import { ROUTES } from '@/config/routes'
 import { formatCurrency, formatDate } from '@/lib/format'
 import { INVOICE_STATUS, LIGHT_RANK, LIGHT_STYLES, lightOf } from '@/lib/semaphore'
 import { cn } from '@/lib/utils'
+import { InvoiceCard } from './InvoiceCard'
 import { InvoiceRowActions } from './InvoiceRowActions'
 import { InvoiceStatusBadge } from './InvoiceStatusBadge'
 
@@ -51,6 +52,15 @@ const features = tableFeatures({
 })
 
 const SEARCHABLE_COLUMNS = new Set(['invoiceNumber', 'supplier', 'purchaseOrderNumber'])
+
+/**
+ * Columnas que se ocultan en pantallas medianas para que Estado y Total siempre
+ * quepan. Las clases van completas (no armadas con texto) para que Tailwind las detecte.
+ * Aun ocultas, siguen siendo buscables.
+ */
+const HIDE_BELOW = {
+  xl: 'hidden xl:table-cell',
+}
 
 const helper = createColumnHelper()
 
@@ -80,11 +90,13 @@ const columns = helper.columns([
   }),
   helper.accessor('purchaseOrderNumber', {
     header: 'Orden de compra',
+    meta: { hideBelow: 'xl' },
     cell: ({ row }) =>
       row.original.purchaseOrderNumber || <span className="text-muted-foreground">Sin OC</span>,
   }),
   helper.accessor('issueDate', {
     header: 'Emisión',
+    meta: { hideBelow: 'xl' },
     cell: ({ row }) => formatDate(row.original.issueDate),
   }),
   helper.accessor('total', {
@@ -171,7 +183,7 @@ export function InvoicesTable({ invoices }) {
   return (
     <Tabs value={lightFilter} onValueChange={setLightFilter}>
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <TabsList aria-label="Filtrar por estado">
+        <TabsList aria-label="Filtrar por estado" className="max-w-full overflow-x-auto">
           {FILTER_ORDER.map((filter) => (
             <TabsTrigger key={filter} value={filter} className="gap-1.5">
               {filter !== 'all' && (
@@ -208,7 +220,21 @@ export function InvoicesTable({ invoices }) {
       </div>
 
       <TabsContent value={lightFilter}>
-        <div className="rounded-lg border bg-background">
+        {/* Menos de 1024px: tarjetas (la tabla no cabe sin cortar el Estado y el Total). */}
+        {rows.length === 0 ? (
+          <p className="rounded-lg border bg-background py-10 text-center text-sm text-muted-foreground lg:hidden">
+            No hay facturas que coincidan con el filtro.
+          </p>
+        ) : (
+          <ul className="grid gap-3 sm:grid-cols-2 lg:hidden">
+            {rows.map((row) => (
+              <InvoiceCard key={row.id} invoice={row.original} />
+            ))}
+          </ul>
+        )}
+
+        {/* Desde 1024px: tabla. */}
+        <div className="hidden rounded-lg border bg-background lg:block">
           <Table>
             <TableHeader>
               {table.getHeaderGroups().map((group) => (
@@ -230,7 +256,10 @@ export function InvoicesTable({ invoices }) {
                               ? 'descending'
                               : undefined
                         }
-                        className={cn(alignRight && 'text-right')}
+                        className={cn(
+                          alignRight && 'text-right',
+                          HIDE_BELOW[header.column.columnDef.meta?.hideBelow],
+                        )}
                       >
                         {header.isPlaceholder ? null : canSort ? (
                           <button
@@ -275,6 +304,7 @@ export function InvoicesTable({ invoices }) {
                         key={cell.id}
                         className={cn(
                           cell.column.columnDef.meta?.align === 'right' && 'text-right',
+                          HIDE_BELOW[cell.column.columnDef.meta?.hideBelow],
                         )}
                       >
                         <table.FlexRender cell={cell} />

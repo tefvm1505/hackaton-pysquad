@@ -165,7 +165,8 @@ function ReviewContent({ invoice }) {
         </Alert>
       )}
 
-      <div className="grid gap-6 lg:grid-cols-2">
+      {/* Dos columnas solo cuando caben (1280px+; con el menú lateral a 1024px quedarían muy angostas). */}
+      <div className="grid gap-6 xl:grid-cols-2">
         <Card>
           <CardHeader>
             <CardTitle>Datos extraídos</CardTitle>

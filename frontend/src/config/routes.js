@@ -8,6 +8,7 @@ export const ROUTES = {
   invoiceReview: (invoiceId = ':invoiceId') => `/facturas/${invoiceId}/revision`,
   upload: '/carga',
   exceptions: '/excepciones',
+  login: '/login',
 }
 
 /** Ítems del menú lateral. */
