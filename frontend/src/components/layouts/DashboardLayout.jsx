@@ -1,5 +1,6 @@
-import { FileSearch, LogOut, Menu } from 'lucide-react'
+import { LogOut, Menu } from 'lucide-react'
 import { NavLink, Outlet } from 'react-router-dom'
+import { BrandMark } from '@/components/brand/BrandMark'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -24,9 +25,8 @@ export function DashboardLayout() {
   return (
     <div className="flex min-h-screen bg-muted/30">
       <aside className="hidden w-60 shrink-0 flex-col border-r bg-background lg:flex">
-        <div className="flex h-14 items-center gap-2 border-b px-4">
-          <FileSearch className="size-5" aria-hidden />
-          <span className="font-semibold tracking-tight">Invoice Processor</span>
+        <div className="flex h-14 items-center border-b px-4">
+          <BrandMark />
         </div>
         <nav aria-label="Principal" className="flex flex-col gap-1 p-2">
           {NAV_ITEMS.map(({ to, label, icon: Icon }) => (
@@ -60,10 +60,7 @@ export function DashboardLayout() {
 
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b bg-background px-4 lg:hidden">
-          <span className="flex items-center gap-2 font-semibold tracking-tight">
-            <FileSearch className="size-5" aria-hidden />
-            Invoice Processor
-          </span>
+          <BrandMark />
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>

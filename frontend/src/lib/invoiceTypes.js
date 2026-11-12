@@ -67,4 +67,65 @@
  * @property {string} [rejectionReason] Motivo si fue rechazada.
  */
 
+/* -------------------------------------------------------------------------- */
+/* Carga de documentos + asistente de IA                                       */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Qué concluyó el análisis de un documento.
+ *  - validated / needs_review / blocked: se pudo leer y generó una factura
+ *  - unreadable: no se pudo leer; no genera factura
+ * @typedef {'validated' | 'needs_review' | 'blocked' | 'unreadable'} AnalysisOutcome
+ */
+
+/**
+ * Paso concreto que el asistente recomienda al usuario.
+ * @typedef {Object} AiRecommendation
+ * @property {string} id
+ * @property {string} text
+ */
+
+/**
+ * Respuesta del asistente de IA tras analizar un documento. El backend la genera;
+ * el frontend solo la muestra. Texto en español, claro y sin jerga técnica.
+ * @typedef {Object} AiAnalysis
+ * @property {AnalysisOutcome} outcome
+ * @property {string} summary Qué entendió y qué encontró, en un párrafo.
+ * @property {AiRecommendation[]} recommendations Guía de qué hacer ahora, en orden.
+ */
+
+/**
+ * Resultado de subir un documento.
+ * @typedef {Object} UploadResult
+ * @property {AiAnalysis} analysis
+ * @property {Invoice} [invoice] Ausente si el documento no se pudo leer.
+ */
+
+/**
+ * Etapa del procesamiento en la que ocurrió una excepción.
+ *  - extraction: lectura del documento (OCR / XML)
+ *  - validation: reglas de negocio (OC, IVA, duplicados, proveedor)
+ *  - accounting: envío a causación en el ERP
+ * @typedef {'extraction' | 'validation' | 'accounting'} ExceptionStage
+ */
+
+/** @typedef {'open' | 'resolved'} ExceptionStatus */
+
+/**
+ * Registro del log de excepciones (para auditoría).
+ * @typedef {Object} ExceptionRecord
+ * @property {string} id
+ * @property {string} occurredAt ISO 8601
+ * @property {ExceptionStage} stage
+ * @property {FindingSeverity} severity
+ * @property {string} code Código estable, p. ej. DUPLICATE_INVOICE
+ * @property {string} message Qué pasó, en lenguaje claro.
+ * @property {string} [details] Detalle técnico o de contexto.
+ * @property {string} [invoiceId] Ausente si no se llegó a crear la factura.
+ * @property {string} [invoiceNumber]
+ * @property {string} [supplierName]
+ * @property {ExceptionStatus} status
+ * @property {{ note: string, by: string, at: string }} [resolution] Quién la resolvió y por qué.
+ */
+
 export {}

@@ -1,6 +1,7 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
+@import "@fontsource-variable/sora/wght.css";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -35,6 +36,12 @@
   --danger: oklch(0.505 0.213 27.518);
   --danger-foreground: oklch(0.985 0 0);
   --danger-soft: oklch(0.936 0.032 17.717);
+
+  /* Neumorphism: superficie suave con una sombra clara (luz) y una oscura (relieve) */
+  --neu-surface: oklch(0.94 0.006 255);
+  --neu-surface-hi: oklch(0.975 0.004 255);
+  --neu-shadow-dark: oklch(0.72 0.02 255 / 0.55);
+  --neu-shadow-light: oklch(1 0 0);
 }
 
 .dark {
@@ -66,9 +73,16 @@
   --danger: oklch(0.704 0.191 22.216);
   --danger-foreground: oklch(0.145 0 0);
   --danger-soft: oklch(0.258 0.092 26.042);
+
+  --neu-surface: oklch(0.22 0 0);
+  --neu-surface-hi: oklch(0.26 0 0);
+  --neu-shadow-dark: oklch(0 0 0 / 0.55);
+  --neu-shadow-light: oklch(1 0 0 / 0.07);
 }
 
 @theme inline {
+  /* Tipografía de la marca Facto: solo para el nombre, no para el texto de la app. */
+  --font-brand: "Sora Variable", ui-sans-serif, system-ui, sans-serif;
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -100,6 +114,21 @@
   --color-danger: var(--danger);
   --color-danger-foreground: var(--danger-foreground);
   --color-danger-soft: var(--danger-soft);
+}
+
+/* Neumorphism: "neu-inset" = hundido (pista), "neu-raised" = elevado (elemento activo). */
+@utility neu-inset {
+  background-color: var(--neu-surface);
+  box-shadow:
+    inset 3px 3px 7px var(--neu-shadow-dark),
+    inset -3px -3px 7px var(--neu-shadow-light);
+}
+
+@utility neu-raised {
+  background-color: var(--neu-surface-hi);
+  box-shadow:
+    2px 2px 5px var(--neu-shadow-dark),
+    -2px -2px 5px var(--neu-shadow-light);
 }
 
 @layer base {

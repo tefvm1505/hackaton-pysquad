@@ -49,6 +49,21 @@ export const FINDING_CATEGORY_LABELS = {
   duplicate: 'Duplicados',
 }
 
+/** Etapas del procesamiento donde puede ocurrir una excepción. */
+export const EXCEPTION_STAGE = {
+  extraction: 'Extracción',
+  validation: 'Validación',
+  accounting: 'Causación',
+}
+
+export const EXCEPTION_STATUS = {
+  open: 'Abierta',
+  resolved: 'Resuelta',
+}
+
+/** Orden de severidad: lo más grave primero. */
+export const SEVERITY_RANK = { error: 0, warning: 1, info: 2 }
+
 /** Estados en los que aún se puede aprobar o rechazar. */
 export const REVIEWABLE_STATUSES = new Set(['validated', 'needs_review', 'blocked'])
 

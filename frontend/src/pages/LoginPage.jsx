@@ -4,6 +4,7 @@ import { Mail } from 'lucide-react'
 import { Controller, useForm } from 'react-hook-form'
 import { toast } from 'sonner'
 import { InvoiceCharacters } from '@/components/auth/InvoiceCharacters'
+import { BrandMark } from '@/components/brand/BrandMark'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -65,6 +66,7 @@ export default function LoginPage() {
 
       <div className="flex flex-col justify-center rounded-3xl bg-background p-6 shadow-sm sm:p-8 md:p-10">
         <div className="mb-8 text-center">
+          <BrandMark size="xl" className="mb-5" />
           <h1 className="text-2xl font-semibold tracking-tight">Tus facturas te esperan.</h1>
           <p className="mt-1 text-sm text-muted-foreground">Inicia sesión para continuar.</p>
         </div>

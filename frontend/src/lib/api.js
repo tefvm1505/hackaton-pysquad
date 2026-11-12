@@ -1,5 +1,8 @@
 import { DEMO_IDENTIFIERS, DEMO_PASSWORD, DEMO_USER } from './mockAuth'
+import { MOCK_EXCEPTIONS } from './mockExceptions'
 import { MOCK_INVOICES } from './mockInvoices'
+import { buildUploadOutcome } from './mockUploads'
+import { MAX_FILE_BYTES } from './uploadRules'
 
 /**
  * Acceso a datos del backend.
@@ -86,7 +89,7 @@ const delay = (ms = LATENCY_MS) => new Promise((resolve) => setTimeout(resolve, 
  */
 
 // MOCK: la "sesión" demo dura lo que dure la pestaña. No es segura, solo simula al backend.
-const MOCK_SESSION_KEY = 'invoice-processor:mock-session'
+const MOCK_SESSION_KEY = 'facto:mock-session'
 
 function readMockSession() {
   try {
@@ -209,5 +212,95 @@ export async function rejectInvoice(id, reason) {
   if (!current) throw new Error('La factura no existe')
   const updated = { ...current, status: 'rejected', rejectionReason: reason }
   store.set(id, updated)
+  return structuredClone(updated)
+}
+
+/* -------------------------------------------------------------------------- */
+/* Carga de documentos                                                         */
+/* -------------------------------------------------------------------------- */
+
+/*
+ * Contrato propuesto para el backend:
+ *
+ *   POST /invoices/upload   (multipart/form-data, campo "file")
+ *     -> 202 { jobId }  y el avance se consulta con GET /invoices/upload/:jobId
+ *        (o por SSE/WebSocket): { stage, progress } y al final { analysis, invoice? }
+ *   El backend debe validar tipo real, tamaño y analizar con antivirus; la validación del
+ *   navegador (uploadRules.js) es solo comodidad. `analysis` lo redacta la IA.
+ */
+
+// MOCK: la n-ésima carga de la sesión sigue un escenario distinto (ver mockUploads.js).
+let uploadCounter = 0
+
+const exceptionStore = new Map(structuredClone(MOCK_EXCEPTIONS).map((e) => [e.id, e]))
+
+/**
+ * Sube un documento y devuelve el análisis de la IA.
+ *
+ * @param {File} file
+ * @param {{ onProgress?: (percent: number) => void,
+ *           onStage?: (stage: 'upload' | 'read' | 'validate' | 'check') => void }} [hooks]
+ * @returns {Promise<import('./invoiceTypes').UploadResult>}
+ */
+export async function uploadInvoice(file, { onProgress, onStage } = {}) {
+  assertMock()
+  if (file.size > MAX_FILE_BYTES) {
+    throw new ApiError('El archivo supera el tamaño permitido', 413)
+  }
+
+  const n = uploadCounter++
+
+  onStage?.('upload')
+  for (let percent = 0; percent <= 100; percent += 20) {
+    onProgress?.(percent)
+    await delay(180)
+  }
+
+  for (const stage of ['read', 'validate', 'check']) {
+    onStage?.(stage)
+    await delay(700)
+  }
+
+  const { invoice, analysis, exceptions } = buildUploadOutcome(n, file.name)
+  if (invoice) store.set(invoice.id, invoice)
+  for (const exception of exceptions) exceptionStore.set(exception.id, exception)
+
+  return structuredClone({ analysis, ...(invoice ? { invoice } : {}) })
+}
+
+/* -------------------------------------------------------------------------- */
+/* Log de excepciones                                                          */
+/* -------------------------------------------------------------------------- */
+
+/** Más recientes primero. @returns {Promise<import('./invoiceTypes').ExceptionRecord[]>} */
+export async function listExceptions() {
+  assertMock()
+  await delay()
+  const all = [...exceptionStore.values()].sort(
+    (a, b) => Date.parse(b.occurredAt) - Date.parse(a.occurredAt),
+  )
+  return structuredClone(all)
+}
+
+/**
+ * Marca una excepción como resuelta, dejando constancia de quién y por qué.
+ * "Quién" lo decide el servidor a partir de la sesión: el cliente nunca lo envía,
+ * porque podría falsificarse.
+ *
+ * @returns {Promise<import('./invoiceTypes').ExceptionRecord>}
+ */
+export async function resolveException(id, note) {
+  assertMock()
+  await delay()
+  const current = exceptionStore.get(id)
+  if (!current) throw new Error('La excepción no existe')
+  if (current.status === 'resolved') throw new Error('La excepción ya estaba resuelta')
+
+  const updated = {
+    ...current,
+    status: 'resolved',
+    resolution: { note, by: DEMO_USER.name, at: new Date().toISOString() },
+  }
+  exceptionStore.set(id, updated)
   return structuredClone(updated)
 }

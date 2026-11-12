@@ -36,16 +36,17 @@ export function InvoiceRowActions({ invoice }) {
           <MoreHorizontal />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
+      {/* Ancho propio: por defecto el menú mide lo que el botón "⋯" y parte las frases. */}
+      <DropdownMenuContent align="end" className="w-auto min-w-52">
         <DropdownMenuLabel>{invoice.invoiceNumber}</DropdownMenuLabel>
         <DropdownMenuSeparator />
-        <DropdownMenuItem asChild>
+        <DropdownMenuItem asChild className="gap-2 py-2 whitespace-nowrap">
           <Link to={ROUTES.invoiceReview(invoice.id)}>
             <ClipboardCheck />
             {canReview ? 'Revisar factura' : 'Ver detalle'}
           </Link>
         </DropdownMenuItem>
-        <DropdownMenuItem onSelect={copyNumber}>
+        <DropdownMenuItem onSelect={copyNumber} className="gap-2 py-2 whitespace-nowrap">
           <ClipboardCopy />
           Copiar número
         </DropdownMenuItem>

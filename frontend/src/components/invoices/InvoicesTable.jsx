@@ -183,7 +183,7 @@ export function InvoicesTable({ invoices }) {
   return (
     <Tabs value={lightFilter} onValueChange={setLightFilter}>
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <TabsList aria-label="Filtrar por estado" className="max-w-full overflow-x-auto">
+        <TabsList variant="neumorphic" aria-label="Filtrar por estado">
           {FILTER_ORDER.map((filter) => (
             <TabsTrigger key={filter} value={filter} className="gap-1.5">
               {filter !== 'all' && (
