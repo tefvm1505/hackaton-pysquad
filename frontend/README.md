@@ -21,7 +21,8 @@ Organizada por tipo de archivo, igual que el resto de proyectos del equipo.
 src/
 ├── components/
 │   ├── ui/               shadcn/ui (minúsculas con guion: button.jsx, dropdown-menu.jsx)
-│   │                     + checkbox, password-input, progress y native-select escritos a mano
+│   │                     + checkbox, password-input, progress, native-select, popover y
+│   │                     form-field escritos a mano
 │   ├── layouts/          DashboardLayout, AuthLayout, ProtectedRoute, PublicOnlyRoute,
 │   │                     SessionCheck, PageHeader
 │   ├── auth/             InvoiceCharacters (facturas con ojos del login)
@@ -29,18 +30,25 @@ src/
 │   ├── invoices/         InvoicesTable, InvoiceCard, InvoiceStatusBadge, InvoiceRowActions
 │   ├── review/           ExtractedDataForm, ValidationFindings, InvoiceLinesTable,
 │   │                     RejectDialog, ConfirmApproveDialog
-│   ├── upload/           Dropzone, UploadQueue, AiAssistantPanel, ProcessingSteps
+│   ├── upload/           Dropzone, UploadQueue, AiAssistantPanel
+│   ├── assistant/        FloatingAssistant (burbuja flotante de IA, en todas las pantallas)
+│   ├── contracts/        ContractsSummary, ContractsTable, ContractCard, ContractStatusBadge,
+│   │                     ContractRowActions, ContractForm, ContractFinancialSummary, ObserveDialog
 │   └── exceptions/       ExceptionsSummary, ExceptionsTable, ExceptionCard,
 │                         ExceptionDetailDialog, ExceptionRowActions, ExceptionBadges
 ├── pages/                Una por ruta, export default: LoginPage, InvoicesPage,
-│                         InvoiceReviewPage, UploadPage, ExceptionsPage
+│                         InvoiceReviewPage, ContractsPage, ContractReviewPage,
+│                         UploadPage, ExceptionsPage
 ├── config/routes.js      ROUTES (rutas) y NAV_ITEMS (menú lateral)
 ├── context/              AuthContext (estado de sesión), auth.js (el contexto)
 ├── hooks/                useAsync, useAuth, useEyeTracking, useKeyboardModality,
-│                         useSlidingIndicator, useUploadQueue
+│                         useSlidingIndicator, useUploadQueue, useZeroGravityDrift
 ├── lib/
-│   ├── api.js            apiFetch + sesión, facturas, carga y excepciones (datos de ejemplo)
+│   ├── api.js            apiFetch + sesión, facturas, contratos, carga y excepciones (datos de ejemplo)
 │   ├── mockInvoices.js   facturas de ejemplo
+│   ├── mockContracts.js  contratos de ejemplo (ct_001 a ct_010)
+│   ├── contracts.js      lógica pura: IVA, total, saldo, % ejecutado, alertas del contrato
+│   ├── contractSchemas.js esquema Zod del formulario de revisión (incluye las 3 confirmaciones)
 │   ├── mockExceptions.js excepciones de ejemplo (log)
 │   ├── mockUploads.js    escenarios que simulan a la IA al subir un documento
 │   ├── uploadRules.js    reglas de archivos: tipos, tamaño, firma del contenido
@@ -112,15 +120,24 @@ y se pierde al cerrar la pestaña.
   `frame-ancestors` desde el servidor/hosting.
 
 **Antes de producción:** `USE_MOCK = false` en `lib/api.js`, borrar `lib/mockAuth.js`,
-`lib/mockInvoices.js`, `lib/mockExceptions.js` y `lib/mockUploads.js`.
+`lib/mockInvoices.js`, `lib/mockContracts.js`, `lib/mockExceptions.js` y `lib/mockUploads.js`.
 
 ## Carga de documentos y asistente de IA
 
 `/carga`: zona de arrastre (PDF o XML), lista de documentos con su estado y, a la derecha, el
-**recuadro del asistente de IA** que explica el resultado del documento seleccionado: un resumen
-en lenguaje claro, los hallazgos, qué hacer ahora (pasos numerados) y acceso a la revisión.
-Mientras procesa muestra los pasos del análisis. En pantallas angostas el orden es: zona de
-carga, respuesta de la IA, lista.
+**recuadro del asistente de IA** (`AiAssistantPanel`), que ocupa la mitad del ancho desde 1280px
+(`xl:grid-cols-2`) y explica el resultado del documento seleccionado. Tiene tres fases:
+
+1. **Sin documento:** rectángulo compacto con una luz animada y una frase que rota
+   ("Quiero analizar tu factura…").
+2. **Procesando:** dice "Analizando…" y la etapa actual (recibiendo, leyendo, razonando,
+   buscando duplicados). No muestra una lista de pasos.
+3. **Con respuesta:** el recuadro se expande hacia abajo con el resumen en lenguaje claro, los
+   hallazgos, qué hacer ahora (pasos numerados) y acceso a la revisión.
+
+En pantallas angostas el orden es: zona de carga, respuesta de la IA, lista. La parte cerrada del
+recuadro es `inert` para que no reciba foco, y un texto `sr-only` con `role="status"` anuncia cada
+fase a los lectores de pantalla.
 
 **La IA hoy es simulada.** Las cargas siguen un ciclo fijo para poder ver todos los casos en una
 demo: 1.ª validada, 2.ª con advertencias, 3.ª con errores críticos, 4.ª ilegible, y vuelve a
@@ -139,6 +156,50 @@ Seguridad de la carga:
 - La respuesta de la IA es contenido no confiable: mostrarla siempre como texto (React ya lo hace);
   nunca con `dangerouslySetInnerHTML`.
 - El recuadro avisa que la IA puede equivocarse; la decisión final es de la persona que aprueba.
+
+## Asistente flotante
+
+`components/assistant/FloatingAssistant.jsx`, montado en `DashboardLayout` (no aparece en el login).
+Empieza como una burbuja líquida (contorno irregular que cambia, varias capas) que flota en un
+espacio reducido, "gravedad cero", movida por `hooks/useZeroGravityDrift`. A los 3,5 s vuelve a su
+sitio y se estira en un rectángulo con "¿Necesitas ayuda? Soy tu asistente de IA". La `×` lo
+descarta para el resto de la sesión, y abrir el panel también. Al tocarlo abre un panel con cuatro
+atajos (subir factura, revisar facturas, validar un contrato, ver excepciones).
+
+**Todavía no hay conversación**: depende del servicio de IA, y el panel lo dice. No se simulan
+respuestas. Con "reducir movimiento" del sistema no se mueve. `main` lleva `pb-28` para poder
+desplazar el contenido por encima de la burbuja.
+
+## Contratos
+
+`/contratos`: resumen (total, pendientes, con observaciones, validados), pestañas por estado
+(selector en móvil), filtro por tipo, búsqueda por número, contraparte, NIT o tipo, y orden por
+columna. Tabla desde 1024px y tarjetas por debajo. `/contratos/:id/revision` es la validación manual.
+
+- **Tres bloques:** Detalles (número, contraparte, NIT, fechas, plazo, objeto), Montos (valor, IVA,
+  moneda, periodicidad de cobro) y Tipo de contrato. El **resumen calculado** (IVA, total con IVA,
+  facturado, saldo, % ejecutado) se recalcula al editar. `billedToDate` no se edita aquí.
+- **Validar** exige marcar las tres confirmaciones ("revisé los detalles / los montos / el tipo").
+  Lo impone el esquema Zod (`reviewed.*` debe ser `true`), no solo la interfaz. Los campos que la
+  persona corrigió quedan anotados en `validation.corrections`.
+- **Dejar observaciones** exige un motivo de al menos 10 caracteres. Un contrato observado se puede
+  volver a revisar. Uno **validado queda cerrado** y de solo lectura.
+- **Puntos de atención:** avisa si lo facturado supera el valor del contrato, si ya venció o vence
+  pronto, y si el IVA es 0%.
+
+**Contrato propuesto para el backend** (detallado en `lib/api.js` y `lib/invoiceTypes.js`):
+
+| Endpoint | Respuesta |
+|---|---|
+| `GET /contracts` | lista de contratos |
+| `GET /contracts/:id` | el contrato, o `404` |
+| `POST /contracts/:id/validate` `{ values, reviewed }` | contrato actualizado, estado `validated` |
+| `POST /contracts/:id/observe` `{ note }` | contrato actualizado, estado `observed` |
+
+- **Quién validó u observó y cuándo lo decide el servidor** por la sesión; el cliente no envía
+  `by` ni `at`.
+- El backend debe **repetir las validaciones** (confirmaciones, valor mayor a 0, fin posterior al
+  inicio, NIT) y rechazar la edición de contratos ya validados.
 
 ## Log de excepciones
 
@@ -170,6 +231,12 @@ junto a quién y cuándo. Quién la resolvió lo decide el servidor por la sesi�
   líneas de la factura de lista a tabla. Si cambias un punto de corte, ajusta los tres juntos para
   que no queden tamaños con tablas cortadas. Los textos del listado existen dos veces en el DOM
   (tarjeta y tabla, una oculta por CSS): en pruebas automáticas filtrar por elementos visibles.
+- **Avisos (toasts) arriba al centro.** Las acciones de cada página (Validar, Aprobar…) están
+  arriba a la derecha y el asistente flotante abajo a la derecha, así que ninguna de las dos
+  esquinas debe taparse. En móvil bajan 64px para no cubrir el botón del menú (`mobileOffset`).
+  Un aviso que se puede repetir (p. ej. "Falta completar la revisión") lleva `id` fijo para no apilarse.
+- **`PageHeader`:** las acciones hacen `flex-wrap`. Con estado y varios botones no caben en una línea
+  en móvil y desbordarían la página.
 - **Aprobar con errores críticos** exige una segunda confirmación; **rechazar** exige un
   motivo de al menos 10 caracteres.
 - **Validación de montos:** `total = subtotal + IVA` con tolerancia de 1 unidad de moneda

@@ -22,8 +22,9 @@ export default function UploadPage() {
         description="Sube facturas en PDF o XML (UBL). Facto las lee, las valida y te explica qué encontró."
       />
 
-      {/* La fila 1 mide lo que la zona de carga; la fila 2 absorbe la altura sobrante del panel. */}
-      <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] xl:grid-rows-[auto_1fr]">
+      {/* Mitad y mitad: la zona de carga y el asistente miden lo mismo de ancho. La fila 1 mide
+          lo que la zona de carga; la fila 2 absorbe la altura que gana el panel al expandirse. */}
+      <div className="grid items-start gap-6 xl:grid-cols-2 xl:grid-rows-[auto_1fr]">
         <Dropzone onFiles={addFiles} />
 
         <AiAssistantPanel

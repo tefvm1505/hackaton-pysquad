@@ -83,6 +83,92 @@
 @theme inline {
   /* Tipografía de la marca Facto: solo para el nombre, no para el texto de la app. */
   --font-brand: "Sora Variable", ui-sans-serif, system-ui, sans-serif;
+
+  /* Animaciones del asistente de IA (todas se apagan con "reducir movimiento") */
+  --animate-aurora: aurora 8s ease-in-out infinite;
+  --animate-dot: dot 1.2s ease-in-out infinite;
+  --animate-blob-morph: blob-morph 7s ease-in-out infinite;
+  --animate-blob-morph-wide: blob-morph-wide 6s ease-in-out infinite;
+  --animate-jelly: jelly 4.5s ease-in-out infinite;
+
+  /* Luz suave que recorre un recuadro de lado a lado */
+  @keyframes aurora {
+    0%,
+    100% {
+      background-position: 0% 50%;
+    }
+    50% {
+      background-position: 100% 50%;
+    }
+  }
+
+  /* Puntos de "pensando…" */
+  @keyframes dot {
+    0%,
+    80%,
+    100% {
+      opacity: 0.25;
+      transform: translateY(0);
+    }
+    40% {
+      opacity: 1;
+      transform: translateY(-3px);
+    }
+  }
+
+  /* Contorno irregular que cambia con el tiempo: la burbuja se ve como un líquido */
+  @keyframes blob-morph {
+    0%,
+    100% {
+      border-radius: 58% 42% 55% 45% / 48% 58% 42% 52%;
+    }
+    25% {
+      border-radius: 44% 56% 38% 62% / 60% 40% 60% 40%;
+    }
+    50% {
+      border-radius: 52% 48% 63% 37% / 41% 57% 43% 59%;
+    }
+    75% {
+      border-radius: 38% 62% 47% 53% / 55% 45% 58% 42%;
+    }
+  }
+
+  /* La misma idea para una forma alargada (el rectángulo del asistente). Los radios horizontales
+     van en px para que no dependan del ancho; los verticales suman 100% en cada lado para que el
+     navegador no los reescale. Con el ancho de la burbuja, la forma queda casi redonda. */
+  @keyframes blob-morph-wide {
+    0%,
+    100% {
+      border-radius: 40px 30px 34px 26px / 58% 46% 54% 42%;
+    }
+    25% {
+      border-radius: 28px 42px 26px 38px / 44% 60% 40% 56%;
+    }
+    50% {
+      border-radius: 36px 26px 42px 32px / 62% 42% 58% 38%;
+    }
+    75% {
+      border-radius: 26px 38px 30px 44px / 46% 56% 44% 54%;
+    }
+  }
+
+  /* Leve estiramiento y aplastamiento, como una gota que tiembla */
+  @keyframes jelly {
+    0%,
+    100% {
+      transform: scale(1, 1);
+    }
+    30% {
+      transform: scale(1.012, 0.955);
+    }
+    55% {
+      transform: scale(0.992, 1.035);
+    }
+    80% {
+      transform: scale(1.006, 0.98);
+    }
+  }
+
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);

@@ -128,4 +128,43 @@
  * @property {{ note: string, by: string, at: string }} [resolution] Quién la resolvió y por qué.
  */
 
+/* -------------------------------------------------------------------------- */
+/* Contratos                                                                   */
+/* -------------------------------------------------------------------------- */
+
+/** @typedef {'service' | 'supply' | 'lease' | 'maintenance' | 'consulting' | 'license'} ContractType */
+
+/** @typedef {'one_time' | 'monthly' | 'quarterly' | 'annual'} BillingFrequency */
+
+/**
+ * Estado de la validación MANUAL del contrato.
+ *  - pending_review: nadie lo ha revisado todavía
+ *  - validated:      una persona revisó detalles, montos y tipo y lo dio por bueno (queda cerrado)
+ *  - observed:       una persona encontró algo que corregir; se puede volver a revisar
+ * @typedef {'pending_review' | 'validated' | 'observed'} ContractStatus
+ */
+
+/**
+ * @typedef {Object} Contract
+ * @property {string} id
+ * @property {string} contractNumber
+ * @property {string} counterpartyName Contraparte (proveedor, arrendador, etc.)
+ * @property {string} counterpartyNit
+ * @property {ContractType} type
+ * @property {string} object Objeto del contrato, en palabras.
+ * @property {Currency} currency
+ * @property {number} amount Valor total del contrato, SIN IVA.
+ * @property {number} ivaRate Porcentaje de IVA aplicable: 0, 5 o 19.
+ * @property {BillingFrequency} billingFrequency
+ * @property {number} billedToDate Facturado a la fecha, sin IVA. Lo calcula contabilidad: no se edita aquí.
+ * @property {string} startDate yyyy-mm-dd
+ * @property {string} endDate yyyy-mm-dd
+ * @property {number} paymentTermsDays Plazo de pago en días.
+ * @property {string} costCenter Puede estar vacío.
+ * @property {ContractStatus} status
+ * @property {{ by: string, at: string, reviewed: { details: boolean, amounts: boolean, type: boolean }, corrections: string[] }} [validation]
+ *   Quién validó, cuándo, qué revisó y qué campos corrigió. Lo escribe el servidor.
+ * @property {{ by: string, at: string, note: string }} [observation] Última observación.
+ */
+
 export {}

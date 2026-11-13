@@ -64,6 +64,37 @@ export const EXCEPTION_STATUS = {
 /** Orden de severidad: lo más grave primero. */
 export const SEVERITY_RANK = { error: 0, warning: 1, info: 2 }
 
+/* -------------------------------------------------------------------------- */
+/* Contratos                                                                   */
+/* -------------------------------------------------------------------------- */
+
+/** Estado de la validación manual de un contrato → etiqueta y color de semáforo. */
+export const CONTRACT_STATUS = {
+  pending_review: { label: 'Pendiente de revisión', light: 'yellow' },
+  validated: { label: 'Validado', light: 'green' },
+  observed: { label: 'Con observaciones', light: 'red' },
+}
+
+/** Tipos de contrato. */
+export const CONTRACT_TYPE = {
+  service: 'Prestación de servicios',
+  supply: 'Suministro',
+  lease: 'Arrendamiento',
+  maintenance: 'Mantenimiento',
+  consulting: 'Consultoría',
+  license: 'Licenciamiento de software',
+}
+
+export const BILLING_FREQUENCY = {
+  one_time: 'Pago único',
+  monthly: 'Mensual',
+  quarterly: 'Trimestral',
+  annual: 'Anual',
+}
+
+/** Estados en los que un contrato todavía se puede revisar (los validados quedan cerrados). */
+export const REVIEWABLE_CONTRACT_STATUSES = new Set(['pending_review', 'observed'])
+
 /** Estados en los que aún se puede aprobar o rechazar. */
 export const REVIEWABLE_STATUSES = new Set(['validated', 'needs_review', 'blocked'])
 

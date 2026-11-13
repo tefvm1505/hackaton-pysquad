@@ -1,4 +1,6 @@
+import { changedFields } from './contracts'
 import { DEMO_IDENTIFIERS, DEMO_PASSWORD, DEMO_USER } from './mockAuth'
+import { MOCK_CONTRACTS } from './mockContracts'
 import { MOCK_EXCEPTIONS } from './mockExceptions'
 import { MOCK_INVOICES } from './mockInvoices'
 import { buildUploadOutcome } from './mockUploads'
@@ -302,5 +304,93 @@ export async function resolveException(id, note) {
     resolution: { note, by: DEMO_USER.name, at: new Date().toISOString() },
   }
   exceptionStore.set(id, updated)
+  return structuredClone(updated)
+}
+
+/* -------------------------------------------------------------------------- */
+/* Contratos                                                                   */
+/* -------------------------------------------------------------------------- */
+
+/*
+ * Contrato propuesto para el backend:
+ *
+ *   GET  /contracts               -> lista de contratos
+ *   GET  /contracts/:id           -> un contrato (404 si no existe)
+ *   POST /contracts/:id/validate  { values, reviewed }  -> contrato actualizado, estado "validated"
+ *   POST /contracts/:id/observe   { note }              -> contrato actualizado, estado "observed"
+ *
+ * El servidor DEBE volver a validar todo (montos, fechas, tipo, que las tres revisiones vengan en
+ * true) y decidir por sí mismo quién validó y cuándo, a partir de la sesión: nunca confiar en un
+ * "by" o "at" que mande el cliente. Un contrato "validated" no se puede validar ni observar otra vez.
+ * `billedToDate` lo calcula contabilidad y NO se acepta desde este formulario.
+ */
+
+const contractStore = new Map(structuredClone(MOCK_CONTRACTS).map((c) => [c.id, c]))
+
+/** @returns {Promise<import('./invoiceTypes').Contract[]>} */
+export async function listContracts() {
+  assertMock()
+  await delay()
+  return structuredClone([...contractStore.values()])
+}
+
+/** @returns {Promise<import('./invoiceTypes').Contract | null>} */
+export async function getContract(id) {
+  assertMock()
+  await delay()
+  const contract = contractStore.get(id)
+  return contract ? structuredClone(contract) : null
+}
+
+/**
+ * Valida el contrato tras la revisión manual de detalles, montos y tipo. Si la persona corrigió
+ * algún dato, se guarda el valor corregido y queda anotado qué campos cambió.
+ *
+ * @param {string} id
+ * @param {Object} values Valores del formulario (ya validados por `contractFormSchema`), con `reviewed`.
+ * @returns {Promise<import('./invoiceTypes').Contract>}
+ */
+export async function validateContract(id, values) {
+  assertMock()
+  await delay()
+  const current = contractStore.get(id)
+  if (!current) throw new Error('El contrato no existe')
+  if (current.status === 'validated') throw new Error('El contrato ya fue validado')
+
+  const { reviewed, ...fields } = values
+  if (!reviewed?.details || !reviewed?.amounts || !reviewed?.type) {
+    throw new Error('Faltan revisiones por confirmar')
+  }
+
+  const updated = {
+    ...current,
+    ...fields,
+    status: 'validated',
+    validation: {
+      by: DEMO_USER.name,
+      at: new Date().toISOString(),
+      reviewed: { details: true, amounts: true, type: true },
+      corrections: changedFields(current, { ...current, ...fields }),
+    },
+  }
+  delete updated.observation
+  contractStore.set(id, updated)
+  return structuredClone(updated)
+}
+
+/** Marca el contrato como observado, con el motivo para quien debe corregirlo. */
+export async function observeContract(id, note) {
+  assertMock()
+  await delay()
+  const current = contractStore.get(id)
+  if (!current) throw new Error('El contrato no existe')
+  if (current.status === 'validated') throw new Error('El contrato ya fue validado')
+
+  const updated = {
+    ...current,
+    status: 'observed',
+    observation: { by: DEMO_USER.name, at: new Date().toISOString(), note },
+  }
+  contractStore.set(id, updated)
   return structuredClone(updated)
 }

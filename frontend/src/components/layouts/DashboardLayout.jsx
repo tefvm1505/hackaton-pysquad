@@ -1,5 +1,6 @@
 import { LogOut, Menu } from 'lucide-react'
 import { NavLink, Outlet } from 'react-router-dom'
+import { FloatingAssistant } from '@/components/assistant/FloatingAssistant'
 import { BrandMark } from '@/components/brand/BrandMark'
 import { Button } from '@/components/ui/button'
 import {
@@ -92,10 +93,13 @@ export function DashboardLayout() {
           </DropdownMenu>
         </header>
 
-        <main className="min-w-0 flex-1 p-4 sm:p-6 lg:p-8">
+        {/* `pb-28`: deja espacio abajo para poder desplazar el contenido por encima del asistente flotante. */}
+        <main className="min-w-0 flex-1 p-4 pb-28 sm:p-6 sm:pb-28 lg:p-8 lg:pb-28">
           <Outlet />
         </main>
       </div>
+
+      <FloatingAssistant />
     </div>
   )
 }
