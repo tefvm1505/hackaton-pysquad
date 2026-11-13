@@ -1,0 +1,12 @@
+# Secretos: nunca al repositorio
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Windows / editores
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

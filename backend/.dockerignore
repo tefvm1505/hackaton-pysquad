@@ -1,0 +1,20 @@
+# Secretos: nunca dentro de la imagen. Las variables llegan por docker-compose.
+.env
+.env.*
+!.env.example
+
+# Python local
+__pycache__/
+*.py[cod]
+venv/
+.venv/
+.pytest_cache/
+
+# Facturas subidas en local (en el servidor van a volúmenes)
+facturas/*
+facturas_pdf/*
+
+.git
+.vscode/
+.idea/
+*.log
