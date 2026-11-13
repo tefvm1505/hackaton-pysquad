@@ -23,6 +23,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { ROUTES } from '@/config/routes'
 import { useAsync } from '@/hooks/useAsync'
 import { listCausaciones } from '@/lib/api'
@@ -260,12 +261,23 @@ function CausacionDetailDialog({ causacion, onClose }) {
 /* Página principal                                                            */
 /* -------------------------------------------------------------------------- */
 
+/** Filtros por estado. `light` es el color del punto en la pestaña (el mismo del resumen). */
 const STATUS_FILTERS = [
   { value: 'all', label: 'Todas' },
-  { value: 'validada', label: 'Validadas' },
-  { value: 'con errores', label: 'Con errores' },
-  { value: 'rechazada', label: 'Rechazadas' },
+  { value: 'validada', label: 'Validadas', light: 'green' },
+  { value: 'con errores', label: 'Con errores', light: 'yellow' },
+  { value: 'rechazada', label: 'Rechazadas', light: 'red' },
 ]
+
+/** ¿La causación entra en el filtro de estado? Lo usan la lista y los contadores de las pestañas. */
+function matchesStatus(causacion, filter) {
+  if (filter === 'all') return true
+  const estado = causacion.estado?.toLowerCase().trim() ?? ''
+  if (filter === 'validada') return estado === 'validada' || estado === 'aprobada'
+  if (filter === 'rechazada') return estado === 'rechazada'
+  if (filter === 'con errores') return estado === 'con errores' || estado === 'requiere revision'
+  return true
+}
 
 export default function ExceptionsPage() {
   const { data, error, isLoading, reload } = useAsync(listCausaciones, [])
@@ -275,16 +287,18 @@ export default function ExceptionsPage() {
 
   const selected = data?.find((c) => c.id === selectedId) ?? null
 
+  const statusCounts = useMemo(() => {
+    const result = {}
+    for (const { value } of STATUS_FILTERS) {
+      result[value] = data ? data.filter((c) => matchesStatus(c, value)).length : 0
+    }
+    return result
+  }, [data])
+
   const filtered = useMemo(() => {
     if (!data) return []
     return data.filter((c) => {
-      // Filtro por estado
-      if (statusFilter !== 'all') {
-        const estado = c.estado?.toLowerCase().trim() ?? ''
-        if (statusFilter === 'validada' && estado !== 'validada' && estado !== 'aprobada') return false
-        if (statusFilter === 'rechazada' && estado !== 'rechazada') return false
-        if (statusFilter === 'con errores' && estado !== 'con errores' && estado !== 'requiere revision') return false
-      }
+      if (!matchesStatus(c, statusFilter)) return false
       // Filtro por búsqueda
       if (search) {
         const q = search.toLowerCase()
@@ -321,59 +335,55 @@ export default function ExceptionsPage() {
         <>
           <CausacionesSummary items={data} />
 
-          {/* Filtros */}
-          <div className="mb-4 flex flex-wrap items-center gap-3">
-            <div className="flex gap-1.5 rounded-lg bg-muted p-1">
-              {STATUS_FILTERS.map(({ value, label }) => (
-                <button
-                  key={value}
-                  type="button"
-                  onClick={() => setStatusFilter(value)}
-                  className={cn(
-                    'rounded-md px-3 py-1.5 text-xs font-medium transition-colors',
-                    statusFilter === value
-                      ? 'bg-background text-foreground shadow-sm'
-                      : 'text-muted-foreground hover:text-foreground',
-                  )}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
+          <Tabs value={statusFilter} onValueChange={setStatusFilter}>
+            {/* Filtros: el mismo selector neumórfico de Facturas y Contratos. */}
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+              <TabsList variant="neumorphic" aria-label="Filtrar por estado">
+                {STATUS_FILTERS.map(({ value, label, light }) => (
+                  <TabsTrigger key={value} value={value} className="gap-1.5">
+                    {light && <span aria-hidden className={cn('size-2 rounded-full', LIGHT_STYLES[light].dot)} />}
+                    {label}
+                    <span className="text-xs text-muted-foreground tabular-nums">{statusCounts[value]}</span>
+                  </TabsTrigger>
+                ))}
+              </TabsList>
 
-            <div className="relative ml-auto w-full sm:w-72">
-              <Search
-                aria-hidden
-                className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground"
-              />
-              <Input
-                type="search"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Buscar en sugerencias, factura o contrato"
-                aria-label="Buscar causaciones"
-                className="h-9 pl-8"
-              />
-            </div>
-          </div>
-
-          {/* Lista */}
-          {filtered.length === 0 ? (
-            <div className="flex flex-col items-center gap-2 rounded-lg border bg-background py-16 text-center">
-              <ReceiptText aria-hidden className="size-10 text-muted-foreground/40" />
-              <p className="text-sm text-muted-foreground">No hay causaciones que coincidan con los filtros.</p>
-            </div>
-          ) : (
-            <ul className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-              {filtered.map((causacion) => (
-                <CausacionCard
-                  key={causacion.id}
-                  causacion={causacion}
-                  onClick={(c) => setSelectedId(c.id)}
+              <div className="relative w-full sm:w-72">
+                <Search
+                  aria-hidden
+                  className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground"
                 />
-              ))}
-            </ul>
-          )}
+                <Input
+                  type="search"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Buscar en sugerencias, factura o contrato"
+                  aria-label="Buscar causaciones"
+                  className="h-9 pl-8"
+                />
+              </div>
+            </div>
+
+            {/* Lista */}
+            <TabsContent value={statusFilter}>
+              {filtered.length === 0 ? (
+                <div className="flex flex-col items-center gap-2 rounded-lg border bg-background py-16 text-center">
+                  <ReceiptText aria-hidden className="size-10 text-muted-foreground/40" />
+                  <p className="text-sm text-muted-foreground">No hay causaciones que coincidan con los filtros.</p>
+                </div>
+              ) : (
+                <ul className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                  {filtered.map((causacion) => (
+                    <CausacionCard
+                      key={causacion.id}
+                      causacion={causacion}
+                      onClick={(c) => setSelectedId(c.id)}
+                    />
+                  ))}
+                </ul>
+              )}
+            </TabsContent>
+          </Tabs>
 
           <CausacionDetailDialog causacion={selected} onClose={() => setSelectedId(null)} />
         </>
