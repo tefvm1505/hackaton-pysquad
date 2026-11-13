@@ -51,7 +51,7 @@ const randomKnot = () => KNOT_MIN_S + Math.random() * (KNOT_MAX_S - KNOT_MIN_S)
  * dirección que cambia de forma suave e impredecible, sin salirse de una zona reducida.
  *
  * - `active: false` lo lleva de vuelta a su sitio con un resorte suave (sin cortes) y lo deja ahí.
- * - `paused: true` lo congela donde esté; al reanudar, acelera de nuevo poco a poco.
+ * - `paused: true` lo deja donde esté y lo endereza; al reanudar, acelera de nuevo poco a poco.
  * - Con "reducir movimiento" no se mueve.
  *
  * Escribe `style.transform` directamente en cada cuadro (sin re-render de React) y deja de
@@ -159,9 +159,17 @@ export function useZeroGravityDrift(elementRef, { active, paused }) {
       last = now
 
       if (flags.current.paused) {
-        // Congelado. Al reanudar arranca desde velocidad cero.
+        // Se queda donde está, pero se endereza (rápido) para que lo que se abra encima, como
+        // el chat, no quede torcido. Al reanudar arranca desde velocidad cero.
         Object.assign(state, { vx: 0, vy: 0, speed: 0 })
-        last = 0
+        state.rot += (0 - state.rot) * (1 - Math.exp(-dt / HOME_LEAN_LAG_S))
+        if (Math.abs(state.rot) < 0.05) state.rot = 0
+        render()
+        if (state.rot === 0) {
+          last = 0
+          return
+        }
+        frame = requestAnimationFrame(tick)
         return
       }
 
@@ -200,7 +208,7 @@ export function useZeroGravityDrift(elementRef, { active, paused }) {
 
     function start() {
       if (frame || reducedMotion.matches) return
-      if (flags.current.paused) return
+      if (flags.current.paused && state.rot === 0) return
       if (!flags.current.active && state.mode === 'home' && state.x === 0 && state.y === 0) return
       last = 0
       frame = requestAnimationFrame(tick)

@@ -1,0 +1,60 @@
+# Despliegue completo: base de datos + backend (con Tesseract) + frontend (nginx).
+#
+#   cp .env.example .env      (y completar los valores)
+#   docker compose up -d --build
+#
+# Solo el frontend (nginx) publica un puerto. La base de datos y el backend son
+# internos: no se pueden alcanzar desde fuera del servidor.
+
+services:
+  db:
+    image: mysql:8.4
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?Falta MYSQL_ROOT_PASSWORD en .env}
+      MYSQL_DATABASE: ${DB_NAME:?Falta DB_NAME en .env}
+      MYSQL_USER: ${DB_USER:?Falta DB_USER en .env}
+      MYSQL_PASSWORD: ${DB_PASSWORD:?Falta DB_PASSWORD en .env}
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p\"$$MYSQL_ROOT_PASSWORD\" --silent"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
+
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DB_HOST: db
+      DB_PORT: "3306"
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_NAME: ${DB_NAME}
+      SECRET_KEY: ${SECRET_KEY:?Falta SECRET_KEY en .env}
+      ALGORITHM: ${ALGORITHM:-HS256}
+      API_KEY: ${API_KEY:?Falta API_KEY (Gemini) en .env}
+    volumes:
+      # Las facturas subidas sobreviven a reconstruir la imagen.
+      - facturas_img:/app/facturas
+      - facturas_pdf:/app/facturas_pdf
+    expose:
+      - "8000"
+
+  frontend:
+    build: ./frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "80:80"
+
+volumes:
+  mysql_data:
+  facturas_img:
+  facturas_pdf:

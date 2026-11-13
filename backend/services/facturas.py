@@ -16,7 +16,12 @@ from pypdf import PdfReader
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
-pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
+# En Windows hay que indicar dónde quedó instalado Tesseract (se puede cambiar con TESSERACT_CMD).
+# En Linux y en Docker el programa ya está en el PATH y no se configura nada.
+if os.name == "nt":
+    pytesseract.pytesseract.tesseract_cmd = os.getenv(
+        "TESSERACT_CMD", r"C:\Program Files\Tesseract-OCR\tesseract.exe"
+    )
 
 CAMPOS_REQUERIDOS = [
     "emisor", "nit_emisor", "numero_factura", "fecha_emision",

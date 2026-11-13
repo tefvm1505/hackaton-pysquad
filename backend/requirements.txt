@@ -13,7 +13,8 @@ PyJWT>=2.8,<3.0
 python-dateutil>=2.8,<3.0
 cryptography>=42.0,<43.0
 anthropic
-pytesseract pillow
+pytesseract
+pillow
 pypdf
 openai
 google-genai
