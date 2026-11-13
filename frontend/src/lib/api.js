@@ -476,3 +476,58 @@ export async function observeContract(id, note) {
   contractStore.set(id, updated)
   return structuredClone(updated)
 }
+
+/* -------------------------------------------------------------------------- */
+/* Órdenes de Compra                                                          */
+/* -------------------------------------------------------------------------- */
+
+export function mapPurchaseOrder(raw) {
+  if (!raw) return null
+  return {
+    id: raw.id,
+    numeroOrden: raw.numero_orden,
+    idContrato: raw.id_contrato,
+    fechaEmision: raw.fecha_emision,
+    fechaEsperada: raw.fecha_esperada,
+    estado: raw.estado ?? 'PENDIENTE',
+    nitEmisor: raw.nit_emisor,
+    subtotal: Number(raw.subtotal ?? 0),
+    iva: Number(raw.iva ?? 0),
+    total: Number(raw.total ?? 0),
+    cantidadItems: raw.cantidad_items ?? 0,
+  }
+}
+
+export function mapPurchaseOrderItem(raw) {
+  if (!raw) return null
+  return {
+    id: raw.id,
+    ordenId: raw.orden_id,
+    descripcion: raw.descripcion,
+    cantidad: Number(raw.cantidad ?? 0),
+    precioUnitario: Number(raw.precio_unitario ?? 0),
+    total: Number(raw.total ?? 0),
+  }
+}
+
+/**
+ * Consulta todas las órdenes de compra registradas.
+ * @returns {Promise<Array>}
+ */
+export async function listPurchaseOrders() {
+  const rawList = await apiFetch('/ordenes-compra')
+  return (rawList ?? []).map(mapPurchaseOrder)
+}
+
+/**
+ * Consulta los ítems asociados a una orden de compra junto con los atributos de la orden.
+ * @param {string|number} id ID numérico o número de orden
+ * @returns {Promise<{ orden: Object, items: Array }>}
+ */
+export async function getPurchaseOrderItems(id) {
+  const res = await apiFetch(`/ordenes-compra/${encodeURIComponent(id)}/items`)
+  return {
+    orden: mapPurchaseOrder(res.orden),
+    items: (res.items ?? []).map(mapPurchaseOrderItem),
+  }
+}

@@ -197,9 +197,6 @@ def buscarcontrato(datos, db):
         })
         return responder_pregunta(datosparalaia)
 
-    # =========================================================================
-    # 1. BÚSQUEDA Y EXISTENCIA DE LA ORDEN DE COMPRA DE LA FACTURA
-    # =========================================================================
     orden_compra_codigo = str(buscarfactura.orden_compra or "").strip()
     buscar_oc = db.query(OrdenCompra).filter(
         (OrdenCompra.numero_orden == orden_compra_codigo) |
@@ -211,19 +208,12 @@ def buscarcontrato(datos, db):
             "descripcion": f"Error: No se encontró la orden de compra '{orden_compra_codigo}' en la base de datos para realizar la validación.",
             "estado": "rechazada"
         })
-
-    # =========================================================================
-    # 2. VALIDAR QUE LA ORDEN DE COMPRA PERTENEZCA AL CONTRATO
-    # =========================================================================
     if buscar_oc and str(buscar_oc.id_contrato).strip() != str(contrato.id_contrato).strip():
         datosparalaia.append({
             "descripcion": f"Error: La orden de compra '{buscar_oc.numero_orden}' pertenece al contrato '{buscar_oc.id_contrato}', pero la factura reporta el contrato '{contrato.id_contrato}'.",
             "estado": "rechazada"
         })
 
-    # =========================================================================
-    # 3. VALIDACIÓN CRUZADA DE NITS (CONTRATO, ORDEN DE COMPRA Y FACTURA)
-    # =========================================================================
     nit_contrato_limpio = contrato.proveedor_nit.replace(".", "").strip()
     nit_factura_limpio = buscarfactura.nit_emisor.replace(".", "").strip()
 
@@ -245,10 +235,6 @@ def buscarcontrato(datos, db):
                 "descripcion": f"Error: El NIT del emisor en la orden de compra ({buscar_oc.nit_emisor}) y en el contrato ({contrato.proveedor_nit}) no coinciden.",
                 "estado": "rechazada"
             })
-
-    # =========================================================================
-    # 4. VALIDACIÓN DE SUBTOTAL E IVA (MATEMÁTICA Y FACTURA VS ORDEN DE COMPRA)
-    # =========================================================================
     subtotal_factura = round(float(buscarfactura.subtotal), 2)
     iva_factura = round(float(buscarfactura.iva), 2)
     validariva = round(subtotal_factura * 0.19, 2)
@@ -275,9 +261,6 @@ def buscarcontrato(datos, db):
                 "estado": "con errores"
             })
 
-    # =========================================================================
-    # 5. VALIDACIÓN DE ÍTEMS / PRODUCTOS (FACTURA VS ORDEN DE COMPRA VS CONTRATO)
-    # =========================================================================
     buscaritemsfactura = db.query(ItemsFactura).filter(
         ItemsFactura.id_factura == buscarfactura.cufe
     ).all()
@@ -346,9 +329,6 @@ def buscarcontrato(datos, db):
                     "estado": "con errores"
                 })
 
-    # =========================================================================
-    # 6. VALIDACIÓN DE TOTALES (FACTURA, ORDEN DE COMPRA Y CONTRATO)
-    # =========================================================================
     valor_factura = round(float(buscarfactura.total_pagar), 2)
 
     if buscar_oc:
@@ -398,9 +378,6 @@ def buscarcontrato(datos, db):
                     "estado": "rechazada"
                 })
 
-    # =========================================================================
-    # 7. RESPUESTA Y CAUSACIÓN
-    # =========================================================================
     if not datosparalaia:
         item_exito = {
             "descripcion": "Pasó todas las validaciones de tres vías (Factura, Orden de Compra y Contrato: NITs, ítems, precios, subtotales, IVA y totales) correctamente. La factura es válida.",

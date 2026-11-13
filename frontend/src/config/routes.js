@@ -1,4 +1,4 @@
-import { FileSignature, FileUp, ReceiptText, TriangleAlert } from 'lucide-react'
+import { ClipboardList, FileSignature, FileUp, ReceiptText, TriangleAlert } from 'lucide-react'
 
 /** Rutas de la aplicación. Usar siempre estas constantes en vez de strings sueltos. */
 export const ROUTES = {
@@ -9,6 +9,7 @@ export const ROUTES = {
   contracts: '/contratos',
   /** Sin argumento devuelve el patrón (`:contractId`) para declarar la ruta. */
   contractReview: (contractId = ':contractId') => `/contratos/${contractId}/revision`,
+  purchaseOrders: '/ordenes-compra',
   upload: '/carga',
   exceptions: '/excepciones',
   login: '/login',
@@ -18,6 +19,7 @@ export const ROUTES = {
 export const NAV_ITEMS = [
   { to: ROUTES.invoices, label: 'Facturas', icon: ReceiptText },
   { to: ROUTES.contracts, label: 'Contratos', icon: FileSignature },
+  { to: ROUTES.purchaseOrders, label: 'Órdenes de compra', icon: ClipboardList },
   { to: ROUTES.upload, label: 'Carga de documentos', icon: FileUp },
   { to: ROUTES.exceptions, label: 'Causaciones', icon: TriangleAlert },
 ]

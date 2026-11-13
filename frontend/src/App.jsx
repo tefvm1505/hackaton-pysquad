@@ -13,6 +13,7 @@ import ExceptionsPage from '@/pages/ExceptionsPage'
 import InvoiceReviewPage from '@/pages/InvoiceReviewPage'
 import InvoicesPage from '@/pages/InvoicesPage'
 import LoginPage from '@/pages/LoginPage'
+import PurchaseOrdersPage from '@/pages/PurchaseOrdersPage'
 import UploadPage from '@/pages/UploadPage'
 
 export default function App() {
@@ -36,6 +37,7 @@ export default function App() {
                 <Route path={ROUTES.invoiceReview()} element={<InvoiceReviewPage />} />
                 <Route path={ROUTES.contracts} element={<ContractsPage />} />
                 <Route path={ROUTES.contractReview()} element={<ContractReviewPage />} />
+                <Route path={ROUTES.purchaseOrders} element={<PurchaseOrdersPage />} />
                 <Route path={ROUTES.upload} element={<UploadPage />} />
                 <Route path={ROUTES.exceptions} element={<ExceptionsPage />} />
                 <Route path="*" element={<Navigate to={ROUTES.invoices} replace />} />

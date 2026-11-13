@@ -7,6 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from routes.usuarios import router as router_usuarios
 from routes.facturas import router as router_factura
 from routes.chatIA import router as router_IA
+from routes.ordenescompra import router as router_ordenescompra
 
 app = FastAPI(
     title="Facto API - Backend",
@@ -26,6 +27,7 @@ app.add_middleware(
 app.include_router(router_usuarios)
 app.include_router(router_factura)
 app.include_router(router_IA)
+app.include_router(router_ordenescompra)
 
 @app.get("/heald")
 def Heald():
