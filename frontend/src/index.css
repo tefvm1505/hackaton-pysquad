@@ -87,6 +87,7 @@
   /* Animaciones del asistente de IA (todas se apagan con "reducir movimiento") */
   --animate-aurora: aurora 8s ease-in-out infinite;
   --animate-dot: dot 1.2s ease-in-out infinite;
+  --animate-progress: progress 2s ease-in-out infinite;
   --animate-blob-morph: blob-morph 7s ease-in-out infinite;
   --animate-blob-morph-wide: blob-morph-wide 6s ease-in-out infinite;
   --animate-jelly: jelly 4.5s ease-in-out infinite;
@@ -113,6 +114,22 @@
     40% {
       opacity: 1;
       transform: translateY(-3px);
+    }
+  }
+
+  /* Barra de progreso indeterminada */
+  @keyframes progress {
+    0% {
+      width: 0%;
+      margin-left: 0%;
+    }
+    50% {
+      width: 60%;
+      margin-left: 20%;
+    }
+    100% {
+      width: 0%;
+      margin-left: 100%;
     }
   }
 

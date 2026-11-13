@@ -1,25 +1,15 @@
-import { useState } from 'react'
-import { ArrowLeft, Check, FileText, X } from 'lucide-react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
-import { toast } from 'sonner'
+import { ArrowLeft } from 'lucide-react'
+import { Link, useParams } from 'react-router-dom'
+import { CausacionesPanel } from '@/components/review/CausacionesPanel'
 import { InvoiceStatusBadge } from '@/components/invoices/InvoiceStatusBadge'
 import { PageHeader } from '@/components/layouts/PageHeader'
-import { ConfirmApproveDialog } from '@/components/review/ConfirmApproveDialog'
-import { ExtractedDataForm } from '@/components/review/ExtractedDataForm'
-import { InvoiceLinesTable } from '@/components/review/InvoiceLinesTable'
-import { RejectDialog } from '@/components/review/RejectDialog'
-import { ValidationFindings } from '@/components/review/ValidationFindings'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
-import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { ROUTES } from '@/config/routes'
 import { useAsync } from '@/hooks/useAsync'
-import { approveInvoice, getInvoice, rejectInvoice } from '@/lib/api'
-import { formatDate } from '@/lib/format'
-import { INVOICE_STATUS, REVIEWABLE_STATUSES } from '@/lib/semaphore'
-
-const FORM_ID = 'invoice-review-form'
+import { getInvoice } from '@/lib/api'
+import { formatCurrency, formatDate } from '@/lib/format'
 
 function BackLink() {
   return (
@@ -30,6 +20,16 @@ function BackLink() {
       <ArrowLeft aria-hidden className="size-4" />
       Volver a facturas
     </Link>
+  )
+}
+
+/** Campo de solo lectura con etiqueta. */
+function DataField({ label, value, className }) {
+  return (
+    <div className={className}>
+      <p className="text-xs text-muted-foreground">{label}</p>
+      <p className="mt-0.5 text-sm font-medium">{value || <span className="text-muted-foreground">—</span>}</p>
+    </div>
   )
 }
 
@@ -60,180 +60,90 @@ export default function InvoiceReviewPage() {
     )
   }
 
-  // `key` reinicia el formulario si se navega entre facturas sin desmontar la página.
   return <ReviewContent key={invoice.id} invoice={invoice} />
 }
 
 function ReviewContent({ invoice }) {
-  const navigate = useNavigate()
-  const [rejectOpen, setRejectOpen] = useState(false)
-  const [pendingApproval, setPendingApproval] = useState(null)
-  const [isApproving, setIsApproving] = useState(false)
-
-  const canReview = REVIEWABLE_STATUSES.has(invoice.status)
-  const errorCount = invoice.findings.filter((f) => f.severity === 'error').length
-  const attentionCount = invoice.findings.filter((f) => f.severity !== 'info').length
-
-  async function approve(values) {
-    setIsApproving(true)
-    try {
-      await approveInvoice(invoice.id, values)
-      toast.success('Factura aprobada', {
-        description: `${values.invoiceNumber} quedó lista para causación.`,
-      })
-      navigate(ROUTES.invoices)
-    } catch (error) {
-      toast.error('No se pudo aprobar la factura', {
-        description: error instanceof Error ? error.message : 'Inténtalo de nuevo.',
-      })
-    } finally {
-      setIsApproving(false)
-      setPendingApproval(null)
-    }
-  }
-
-  function handleValid(values) {
-    // Con errores críticos pedimos una segunda confirmación explícita.
-    if (errorCount > 0) {
-      setPendingApproval(values)
-      return
-    }
-    void approve(values)
-  }
-
-  function handleInvalid() {
-    toast.error('Hay campos con errores', {
-      description: 'Corrígelos antes de aprobar la factura.',
-    })
-  }
-
-  async function reject(reason) {
-    try {
-      await rejectInvoice(invoice.id, reason)
-    } catch (error) {
-      toast.error('No se pudo rechazar la factura', {
-        description: error instanceof Error ? error.message : 'Inténtalo de nuevo.',
-      })
-      throw error
-    }
-    toast.success('Factura rechazada', {
-      description: `${invoice.invoiceNumber} se marcó como rechazada.`,
-    })
-    setRejectOpen(false)
-    navigate(ROUTES.invoices)
-  }
+  const causacionesCount = invoice.causaciones?.length ?? 0
 
   return (
     <>
       <BackLink />
       <PageHeader
         title={`Factura ${invoice.invoiceNumber}`}
-        description={`${invoice.supplierName} · Recibida el ${formatDate(invoice.receivedAt)}`}
-        actions={
-          <>
-            <InvoiceStatusBadge status={invoice.status} />
-            {canReview && (
-              <>
-                <Button
-                  type="button"
-                  variant="destructive"
-                  onClick={() => setRejectOpen(true)}
-                  disabled={isApproving}
-                >
-                  <X />
-                  Rechazar
-                </Button>
-                {/* Fuera del <form>: se vincula con el atributo `form`. */}
-                <Button type="submit" form={FORM_ID} disabled={isApproving}>
-                  <Check />
-                  {isApproving ? 'Aprobando…' : 'Aprobar'}
-                </Button>
-              </>
-            )}
-          </>
-        }
+        description={`${invoice.supplierName} · NIT ${invoice.supplierNit}`}
+        actions={<InvoiceStatusBadge status={invoice.status} />}
       />
 
-      {!canReview && (
-        <Alert className="mb-6">
-          <AlertTitle>Factura {INVOICE_STATUS[invoice.status].label.toLowerCase()}</AlertTitle>
-          <AlertDescription>
-            {invoice.rejectionReason
-              ? `Motivo: ${invoice.rejectionReason}`
-              : 'Ya no admite cambios desde esta pantalla.'}
-          </AlertDescription>
-        </Alert>
-      )}
-
-      {/* Dos columnas solo cuando caben (1280px+; con el menú lateral a 1024px quedarían muy angostas). */}
+      {/* Dos columnas en pantallas grandes */}
       <div className="grid gap-6 xl:grid-cols-2">
+        {/* Columna izquierda: datos de la factura */}
         <Card>
           <CardHeader>
-            <CardTitle>Datos extraídos</CardTitle>
+            <CardTitle>Datos de la factura</CardTitle>
           </CardHeader>
           <CardContent>
-            <ExtractedDataForm
-              formId={FORM_ID}
-              invoice={invoice}
-              readOnly={!canReview}
-              onValid={handleValid}
-              onInvalid={handleInvalid}
-            />
+            <div className="grid gap-4 sm:grid-cols-2">
+              <DataField label="Número de factura" value={invoice.invoiceNumber} />
+              <DataField label="Orden de compra" value={invoice.purchaseOrderNumber} />
+              <DataField label="Proveedor" value={invoice.supplierName} className="sm:col-span-2" />
+              <DataField label="NIT Proveedor" value={invoice.supplierNit} />
+              <DataField label="Moneda" value={invoice.currency} />
+              <DataField label="Fecha de emisión" value={invoice.issueDate ? formatDate(invoice.issueDate) : null} />
+              <DataField label="Fecha de vencimiento" value={invoice.dueDate ? formatDate(invoice.dueDate) : null} />
+              <DataField label="Cliente" value={invoice.clientName} />
+              <DataField label="NIT Cliente" value={invoice.clientNit} />
+              <DataField label="Contrato" value={invoice.contractId} />
+              <DataField label="CUFE" value={invoice.id} className="sm:col-span-2" />
+
+              <div className="sm:col-span-2 mt-2 rounded-lg bg-muted/50 p-3">
+                <div className="grid grid-cols-3 gap-4">
+                  <div>
+                    <p className="text-xs text-muted-foreground">Subtotal</p>
+                    <p className="mt-0.5 text-sm font-semibold tabular-nums">
+                      {formatCurrency(invoice.subtotal, invoice.currency)}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">IVA</p>
+                    <p className="mt-0.5 text-sm font-semibold tabular-nums">
+                      {formatCurrency(invoice.tax, invoice.currency)}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Total</p>
+                    <p className="mt-0.5 text-base font-bold tabular-nums">
+                      {formatCurrency(invoice.total, invoice.currency)}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
           </CardContent>
         </Card>
 
+        {/* Columna derecha: causaciones */}
         <Card>
           <CardContent>
-            <Tabs defaultValue="findings">
+            <Tabs defaultValue="causaciones">
               <TabsList>
-                <TabsTrigger value="findings">
-                  Hallazgos
-                  {attentionCount > 0 && (
+                <TabsTrigger value="causaciones">
+                  Causaciones
+                  {causacionesCount > 0 && (
                     <span className="rounded-full bg-background px-1.5 text-xs tabular-nums">
-                      {attentionCount}
+                      {causacionesCount}
                     </span>
                   )}
                 </TabsTrigger>
-                <TabsTrigger value="lines">Líneas</TabsTrigger>
-                <TabsTrigger value="document">Documento</TabsTrigger>
               </TabsList>
 
-              <TabsContent value="findings" className="mt-4">
-                <ValidationFindings findings={invoice.findings} />
-              </TabsContent>
-
-              <TabsContent value="lines" className="mt-4">
-                <InvoiceLinesTable invoice={invoice} />
-              </TabsContent>
-
-              <TabsContent value="document" className="mt-4">
-                <div className="flex flex-col items-center gap-3 rounded-lg border border-dashed py-16 text-center">
-                  <FileText aria-hidden className="size-10 text-muted-foreground" />
-                  <p className="max-w-xs text-sm text-muted-foreground">
-                    Aquí se mostrará el PDF original de la factura. Falta la URL del documento
-                    en la respuesta del backend.
-                  </p>
-                </div>
+              <TabsContent value="causaciones" className="mt-4">
+                <CausacionesPanel causaciones={invoice.causaciones} />
               </TabsContent>
             </Tabs>
           </CardContent>
         </Card>
       </div>
-
-      <RejectDialog
-        open={rejectOpen}
-        onOpenChange={setRejectOpen}
-        invoiceNumber={invoice.invoiceNumber}
-        onConfirm={reject}
-      />
-
-      <ConfirmApproveDialog
-        open={pendingApproval !== null}
-        onOpenChange={(open) => !open && setPendingApproval(null)}
-        errorCount={errorCount}
-        isSubmitting={isApproving}
-        onConfirm={() => pendingApproval && void approve(pendingApproval)}
-      />
     </>
   )
 }

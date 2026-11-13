@@ -1,13 +1,10 @@
-import { useState } from 'react'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Mail } from 'lucide-react'
-import { Controller, useForm } from 'react-hook-form'
+import { IdCard } from 'lucide-react'
+import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
 import { InvoiceCharacters } from '@/components/auth/InvoiceCharacters'
 import { BrandMark } from '@/components/brand/BrandMark'
-import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
-import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { PasswordInput } from '@/components/ui/password-input'
@@ -26,34 +23,30 @@ function FieldError({ id, message }) {
 
 export default function LoginPage() {
   const { signIn } = useAuth()
-  const [loginError, setLoginError] = useState(null)
   const {
     register,
-    control,
     handleSubmit,
     resetField,
     setFocus,
     formState: { errors, isSubmitting },
   } = useForm({
     resolver: zodResolver(loginSchema),
-    defaultValues: { identifier: '', password: '', remember: true },
+    defaultValues: { cedula: '', contraseña: '' },
   })
 
   // Al iniciar sesión, PublicOnlyRoute detecta la sesión y redirige; aquí no se navega.
   async function onSubmit(values) {
-    setLoginError(null)
     try {
       await signIn(values)
       toast.success('Sesión iniciada')
     } catch (error) {
-      // Mensaje genérico: no revela si falló el usuario o la contraseña.
-      setLoginError(
-        error instanceof ApiError && error.status === 401
-          ? 'Correo o contraseña incorrectos.'
-          : 'No se pudo iniciar sesión. Inténtalo de nuevo en unos minutos.',
-      )
-      resetField('password')
-      setFocus('password')
+      const message =
+        error instanceof ApiError && (error.status === 401 || error.status === 404)
+          ? error.message
+          : 'No se pudo iniciar sesión. Inténtalo de nuevo en unos minutos.'
+      toast.error(message)
+      resetField('contraseña')
+      setFocus('contraseña')
     }
   }
 
@@ -72,60 +65,39 @@ export default function LoginPage() {
         </div>
 
         <form onSubmit={handleSubmit(onSubmit)} noValidate className="grid gap-4">
-          {loginError && (
-            <Alert variant="destructive">
-              <AlertDescription>{loginError}</AlertDescription>
-            </Alert>
-          )}
 
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="identifier">Correo o usuario</Label>
+                    <div className="flex flex-col gap-1.5">
+            <Label htmlFor="cedula">Cédula</Label>
             <div className="relative">
-              <Mail
+              <IdCard
                 aria-hidden
                 className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground"
               />
               <Input
-                id="identifier"
+                id="cedula"
+                inputMode="numeric"
                 autoComplete="username"
-                placeholder="nombre@empresa.com"
+                placeholder="Ej: 1234567890"
                 className="pl-8"
-                aria-invalid={Boolean(errors.identifier)}
-                aria-describedby={errors.identifier ? 'identifier-error' : undefined}
-                {...register('identifier')}
+                aria-invalid={Boolean(errors.cedula)}
+                aria-describedby={errors.cedula ? 'cedula-error' : undefined}
+                {...register('cedula')}
               />
             </div>
-            <FieldError id="identifier-error" message={errors.identifier?.message} />
+            <FieldError id="cedula-error" message={errors.cedula?.message} />
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="password">Contraseña</Label>
+            <Label htmlFor="contraseña">Contraseña</Label>
             <PasswordInput
-              id="password"
+              id="contraseña"
               autoComplete="current-password"
-              aria-invalid={Boolean(errors.password)}
-              aria-describedby={errors.password ? 'password-error' : undefined}
-              {...register('password')}
+              aria-invalid={Boolean(errors.contraseña)}
+              aria-describedby={errors.contraseña ? 'contraseña-error' : undefined}
+              {...register('contraseña')}
             />
-            <FieldError id="password-error" message={errors.password?.message} />
+            <FieldError id="contraseña-error" message={errors.contraseña?.message} />
           </div>
-
-          <Controller
-            name="remember"
-            control={control}
-            render={({ field }) => (
-              <div className="flex items-center gap-2">
-                <Checkbox
-                  id="remember"
-                  checked={field.value}
-                  onCheckedChange={(checked) => field.onChange(checked === true)}
-                />
-                <Label htmlFor="remember" className="font-normal">
-                  Recordarme
-                </Label>
-              </div>
-            )}
-          />
 
           <Button type="submit" size="lg" disabled={isSubmitting} className="mt-2 w-full">
             {isSubmitting ? 'Ingresando…' : 'Iniciar sesión'}

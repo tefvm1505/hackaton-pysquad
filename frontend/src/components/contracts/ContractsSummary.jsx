@@ -1,4 +1,5 @@
-import { BadgeCheck, ClipboardCheck, FileSignature, MessageSquareWarning } from 'lucide-react'
+import { useMemo } from 'react'
+import { BadgeCheck, FileSignature } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { LIGHT_STYLES } from '@/lib/semaphore'
 import { cn } from '@/lib/utils'
@@ -24,16 +25,34 @@ function Stat({ label, value, icon: Icon, tone }) {
   )
 }
 
-/** Cuántos contratos hay en cada estado de la validación manual. */
+/** Resumen de contratos según los estados reales en la base de datos. */
 export function ContractsSummary({ items }) {
-  const count = (status) => items.filter((c) => c.status === status).length
+  const statusCounts = useMemo(() => {
+    const counts = {}
+    for (const c of items) {
+      const st = c.status || 'Sin estado'
+      counts[st] = (counts[st] || 0) + 1
+    }
+    return counts
+  }, [items])
 
   return (
     <section aria-label="Resumen de contratos" className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
-      <Stat label="Contratos" value={items.length} icon={FileSignature} />
-      <Stat label="Pendientes de revisión" value={count('pending_review')} icon={ClipboardCheck} tone="yellow" />
-      <Stat label="Con observaciones" value={count('observed')} icon={MessageSquareWarning} tone="red" />
-      <Stat label="Validados" value={count('validated')} icon={BadgeCheck} tone="green" />
+      <Stat label="Total contratos" value={items.length} icon={FileSignature} />
+      {Object.entries(statusCounts).map(([statusKey, val]) => {
+        const normalized = statusKey.toLowerCase()
+        const tone = normalized === 'activo' ? 'green' : normalized === 'inactivo' ? 'red' : 'yellow'
+        const label = statusKey.charAt(0).toUpperCase() + statusKey.slice(1)
+        return (
+          <Stat
+            key={statusKey}
+            label={label}
+            value={val}
+            icon={BadgeCheck}
+            tone={tone}
+          />
+        )
+      })}
     </section>
   )
 }

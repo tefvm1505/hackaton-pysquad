@@ -48,9 +48,9 @@ export function DashboardLayout() {
         </nav>
 
         <div className="mt-auto border-t p-3">
-          <div className="mb-2 min-w-0 px-1">
-            <p className="truncate text-sm font-medium">{user.name}</p>
-            <p className="truncate text-xs text-muted-foreground">{user.email}</p>
+                    <div className="mb-2 min-w-0 px-1">
+            <p className="truncate text-sm font-medium">{user.name ?? `Usuario ${user.id}`}</p>
+            <p className="truncate text-xs text-muted-foreground">{user.email ?? user.rol ?? ''}</p>
           </div>
           <Button variant="outline" size="sm" className="w-full" onClick={signOut}>
             <LogOut />
@@ -70,9 +70,9 @@ export function DashboardLayout() {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-64">
-              <DropdownMenuLabel className="font-normal">
-                <p className="truncate text-sm font-medium">{user.name}</p>
-                <p className="truncate text-xs text-muted-foreground">{user.email}</p>
+                            <DropdownMenuLabel className="font-normal">
+                <p className="truncate text-sm font-medium">{user.name ?? `Usuario ${user.id}`}</p>
+                <p className="truncate text-xs text-muted-foreground">{user.email ?? user.rol ?? ''}</p>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
               {NAV_ITEMS.map(({ to, label, icon: Icon }) => (

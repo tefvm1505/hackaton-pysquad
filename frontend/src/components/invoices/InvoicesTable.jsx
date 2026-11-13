@@ -144,12 +144,12 @@ const INITIAL_STATE = {
 
 const FILTER_LABELS = {
   all: 'Todas',
-  red: 'Rojo',
-  yellow: 'Amarillo',
-  green: 'Verde',
+  green: 'Verificada',
+  yellow: 'Revisión',
+  red: 'Rechazada',
 }
 
-const FILTER_ORDER = ['all', 'red', 'yellow', 'green']
+const FILTER_ORDER = ['all', 'green', 'yellow', 'red']
 
 export function InvoicesTable({ invoices }) {
   const [lightFilter, setLightFilter] = useState('all')

@@ -45,11 +45,10 @@ export default function App() {
         </BrowserRouter>
       </AuthProvider>
       {/*
-        Arriba al centro: las acciones de cada página (Validar, Aprobar…) van arriba a la derecha y el
-        asistente flotante abajo a la derecha, así que ninguna de las dos esquinas debe taparse.
+        Arriba a la derecha para que las alertas no salgan en la mitad de la pantalla.
         En móvil se baja bajo la barra superior (56px) para no cubrir el botón del menú.
       */}
-      <Toaster richColors closeButton position="top-center" mobileOffset={{ top: 64 }} />
+      <Toaster richColors closeButton position="top-right" mobileOffset={{ top: 64 }} />
     </TooltipProvider>
   )
 }

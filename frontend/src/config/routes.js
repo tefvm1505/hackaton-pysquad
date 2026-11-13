@@ -19,5 +19,5 @@ export const NAV_ITEMS = [
   { to: ROUTES.invoices, label: 'Facturas', icon: ReceiptText },
   { to: ROUTES.contracts, label: 'Contratos', icon: FileSignature },
   { to: ROUTES.upload, label: 'Carga de documentos', icon: FileUp },
-  { to: ROUTES.exceptions, label: 'Excepciones', icon: TriangleAlert },
+  { to: ROUTES.exceptions, label: 'Causaciones', icon: TriangleAlert },
 ]

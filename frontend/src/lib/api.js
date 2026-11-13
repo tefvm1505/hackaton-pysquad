@@ -18,8 +18,8 @@ import { MAX_FILE_BYTES } from './uploadRules'
  * La URL base se configura con `VITE_API_URL` (ver `.env.example`).
  */
 
-const USE_MOCK = true
-const BASE_URL = import.meta.env.VITE_API_URL ?? '/api'
+const USE_MOCK = false
+const BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
 
 export class ApiError extends Error {
   constructor(message, status) {
@@ -48,11 +48,12 @@ export function setUnauthorizedHandler(handler) {
  * `Access-Control-Allow-Credentials: true`). Con el proxy de Vite no hace falta.
  */
 export async function apiFetch(path, init = {}) {
+  const token = sessionStorage.getItem('facto:token')
   const response = await fetch(`${BASE_URL}${path}`, {
-    credentials: 'include',
     ...init,
     headers: {
       'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...init.headers,
     },
   })
@@ -73,121 +74,174 @@ const delay = (ms = LATENCY_MS) => new Promise((resolve) => setTimeout(resolve, 
 /* Sesión                                                                      */
 /* -------------------------------------------------------------------------- */
 
-/*
- * Contrato propuesto para el backend (coordinar con quien lo construye):
- *
- *   POST /auth/login   { identifier, password, remember }
- *        200 -> { user }  y el servidor fija una cookie de sesión HttpOnly + Secure + SameSite
- *        401 -> credenciales incorrectas (mismo mensaje para usuario y clave)
- *   GET  /auth/me      200 -> { user }   |   401 si no hay sesión válida
- *   POST /auth/logout  204, invalida la sesión en el servidor
- *
- * `user` = { id, name, email, role }. El frontend NO guarda tokens: la sesión vive
- * en la cookie HttpOnly, que el JavaScript de la página no puede leer (protege
- * contra el robo del token por XSS). Para saber si hay sesión se pregunta a /auth/me.
- *
- * Además, CADA endpoint de facturas debe exigir sesión y responder 401 si no la hay:
- * esa es la verdadera barrera. Las rutas protegidas del frontend son solo comodidad.
+const SESSION_TOKEN_KEY = 'facto:token'
+const SESSION_USER_KEY = 'facto:user'
+
+/**
+ * Decodifica el payload de un JWT (sin verificar firma, eso lo hace el backend).
  */
-
-// MOCK: la "sesión" demo dura lo que dure la pestaña. No es segura, solo simula al backend.
-const MOCK_SESSION_KEY = 'facto:mock-session'
-
-function readMockSession() {
+function decodeTokenPayload(token) {
   try {
-    const stored = JSON.parse(sessionStorage.getItem(MOCK_SESSION_KEY))
-    return stored?.id === DEMO_USER.id ? DEMO_USER : null
+    const base64 = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')
+    return JSON.parse(atob(base64))
   } catch {
     return null
   }
 }
 
-/** MOCK: hace que los datos exijan sesión, como lo hará el backend real. */
-function requireMockSession() {
-  if (!readMockSession()) {
-    unauthorizedHandler?.()
-    throw new ApiError('Sesión no válida', 401)
-  }
-}
-
 /**
- * Inicia sesión. Lanza `ApiError` con status 401 si las credenciales no son correctas.
- * @param {{ identifier: string, password: string, remember: boolean }} credentials
- * @returns {Promise<{ id: string, name: string, email: string, role: string }>}
+ * Inicia sesión contra el backend.
+ * Envía { cedula: number, contraseña: string } a POST /login.
+ * El backend devuelve un token JWT directamente (string).
+ * Lo guardamos en sessionStorage.
+ *
+ * @param {{ cedula: string, contraseña: string }} credentials
+ * @returns {Promise<{ id: string, rol: string }>}
  */
-export async function login({ identifier, password, remember }) {
-  if (USE_MOCK) {
-    await delay()
-    const normalized = identifier.trim().toLowerCase()
-    const valid = DEMO_IDENTIFIERS.includes(normalized) && password === DEMO_PASSWORD
-    // Mismo mensaje para usuario y clave incorrectos: no revela cuál falló.
-    if (!valid) throw new ApiError('Credenciales incorrectas', 401)
-    sessionStorage.setItem(MOCK_SESSION_KEY, JSON.stringify({ id: DEMO_USER.id }))
-    return DEMO_USER
+export async function login({ cedula, contraseña }) {
+  const response = await fetch(`${BASE_URL}/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ cedula: Number(cedula), contraseña }),
+  })
+
+  if (!response.ok) {
+    const status = response.status
+    throw new ApiError(
+      status === 401 ? 'Contraseña incorrecta' : status === 404 ? 'Usuario no encontrado' : 'Error al iniciar sesión',
+      status,
+    )
   }
 
-  const { user } = await apiFetch('/auth/login', {
-    method: 'POST',
-    body: JSON.stringify({ identifier, password, remember }),
-  })
+  // El backend retorna el token como string JSON (ej: "eyJ...")
+  const token = await response.json()
+  sessionStorage.setItem(SESSION_TOKEN_KEY, token)
+
+  // Extraemos info del usuario desde el payload del token
+  const payload = decodeTokenPayload(token)
+  const user = { id: payload?.sub ?? cedula, rol: payload?.rol ?? 'user' }
+  sessionStorage.setItem(SESSION_USER_KEY, JSON.stringify(user))
+
   return user
 }
 
 /**
- * Devuelve el usuario con sesión activa o `null` si no hay.
- * Cualquier otro error (red caída, 500) se propaga: quien llama debe tratarlo
- * como "sin sesión" (falla cerrado).
+ * Devuelve el usuario con sesión activa o `null` si no hay token guardado o ya expiró.
  */
 export async function getSession() {
-  if (USE_MOCK) {
-    await delay(120)
-    return readMockSession()
+  const token = sessionStorage.getItem(SESSION_TOKEN_KEY)
+  if (!token) return null
+
+  const payload = decodeTokenPayload(token)
+  if (!payload) return null
+
+  // Verificar si el token ha expirado
+  const now = Math.floor(Date.now() / 1000)
+  if (payload.exp && payload.exp < now) {
+    sessionStorage.removeItem(SESSION_TOKEN_KEY)
+    sessionStorage.removeItem(SESSION_USER_KEY)
+    return null
   }
 
-  try {
-    const { user } = await apiFetch('/auth/me')
-    return user
-  } catch (error) {
-    if (error instanceof ApiError && error.status === 401) return null
-    throw error
-  }
+  const storedUser = sessionStorage.getItem(SESSION_USER_KEY)
+  return storedUser ? JSON.parse(storedUser) : { id: payload.sub, rol: payload.rol }
 }
 
 export async function logout() {
-  if (USE_MOCK) {
-    sessionStorage.removeItem(MOCK_SESSION_KEY)
-    return
-  }
-  await apiFetch('/auth/logout', { method: 'POST' })
+  sessionStorage.removeItem(SESSION_TOKEN_KEY)
+  sessionStorage.removeItem(SESSION_USER_KEY)
 }
 
 /* -------------------------------------------------------------------------- */
 /* Facturas                                                                    */
 /* -------------------------------------------------------------------------- */
 
-// Copia en memoria para que aprobar/rechazar se refleje en el listado.
-const store = new Map(structuredClone(MOCK_INVOICES).map((invoice) => [invoice.id, invoice]))
+/**
+ * Mapea el estado que viene del backend al estado que entiende el semáforo del frontend.
+ * Backend puede devolver: "sin causación", "pendiente", "aprobada", "rechazada", "con errores", etc.
+ */
+const STATUS_MAP = {
+  'aprobada': 'approved',
+  'aprobado': 'approved',
+  'validada': 'validated',
+  'validado': 'validated',
+  'pendiente': 'needs_review',
+  'requiere revision': 'needs_review',
+  'requiere revisión': 'needs_review',
+  'sin causación': 'needs_review',
+  'sin causacion': 'needs_review',
+  'rechazada': 'rejected',
+  'rechazado': 'rejected',
+  'con errores': 'blocked',
+  'error': 'blocked',
+}
 
-function assertMock() {
-  if (!USE_MOCK) {
-    throw new Error('API real no implementada todavía')
+function mapBackendStatus(estado) {
+  if (!estado) return 'needs_review'
+  return STATUS_MAP[estado.toLowerCase().trim()] ?? 'needs_review'
+}
+
+/**
+ * Transforma una factura del backend al formato que espera la tabla del frontend.
+ */
+function mapInvoice(raw) {
+  return {
+    id: raw.cufe,
+    invoiceNumber: raw.numero_factura,
+    supplierName: raw.emisor,
+    supplierNit: raw.nit_emisor,
+    purchaseOrderNumber: raw.orden_compra,
+    issueDate: raw.fecha_emision,
+    dueDate: raw.fecha_vencimiento,
+    total: Number(raw.total_pagar),
+    subtotal: Number(raw.subtotal),
+    tax: Number(raw.iva),
+    currency: raw.moneda ?? 'COP',
+    status: mapBackendStatus(raw.estado),
+    contractId: raw.id_contrato,
+    clientName: raw.cliente,
+    clientNit: raw.nit_cliente,
+    findings: [],
   }
-  requireMockSession()
 }
 
 /** @returns {Promise<import('./invoiceTypes').Invoice[]>} */
 export async function listInvoices() {
-  assertMock()
-  await delay()
-  return structuredClone([...store.values()])
+  const rawList = await apiFetch('/facturas')
+  return rawList.map(mapInvoice)
 }
 
-/** @returns {Promise<import('./invoiceTypes').Invoice | null>} */
+/**
+ * Trae una factura individual por su CUFE.
+ * Busca la factura en el listado general y además trae sus causaciones.
+ * @returns {Promise<Object | null>}
+ */
 export async function getInvoice(id) {
-  assertMock()
-  await delay()
-  const invoice = store.get(id)
-  return invoice ? structuredClone(invoice) : null
+  // Traemos todas las facturas y filtramos por el cufe (id)
+  const [allInvoices, causaciones] = await Promise.all([
+    apiFetch('/facturas'),
+    apiFetch(`/causaciones/factura/${encodeURIComponent(id)}`).catch(() => []),
+  ])
+
+  const raw = allInvoices.find((f) => f.cufe === id)
+  if (!raw) return null
+
+  const invoice = mapInvoice(raw)
+
+  // Adjuntamos las causaciones mapeadas
+  invoice.causaciones = causaciones.map((c) => ({
+    id: c.id,
+    invoiceId: c.id_factura,
+    contractId: c.id_contrato,
+    estado: c.estado,
+    sugerencia: c.sugerencia,
+    fechaCausacion: c.fecha_causacion,
+  }))
+
+  // Usamos ivaAmount como alias de tax para el formulario
+  invoice.ivaAmount = invoice.tax
+
+  return invoice
 }
 
 /**
@@ -271,75 +325,103 @@ export async function uploadInvoice(file, { onProgress, onStage } = {}) {
 }
 
 /* -------------------------------------------------------------------------- */
-/* Log de excepciones                                                          */
+/* Causaciones (sección Excepciones)                                           */
 /* -------------------------------------------------------------------------- */
 
-/** Más recientes primero. @returns {Promise<import('./invoiceTypes').ExceptionRecord[]>} */
-export async function listExceptions() {
-  assertMock()
-  await delay()
-  const all = [...exceptionStore.values()].sort(
-    (a, b) => Date.parse(b.occurredAt) - Date.parse(a.occurredAt),
-  )
-  return structuredClone(all)
-}
-
 /**
- * Marca una excepción como resuelta, dejando constancia de quién y por qué.
- * "Quién" lo decide el servidor a partir de la sesión: el cliente nunca lo envía,
- * porque podría falsificarse.
- *
- * @returns {Promise<import('./invoiceTypes').ExceptionRecord>}
+ * Trae todas las causaciones del backend.
+ * Más recientes primero.
  */
-export async function resolveException(id, note) {
-  assertMock()
-  await delay()
-  const current = exceptionStore.get(id)
-  if (!current) throw new Error('La excepción no existe')
-  if (current.status === 'resolved') throw new Error('La excepción ya estaba resuelta')
-
-  const updated = {
-    ...current,
-    status: 'resolved',
-    resolution: { note, by: DEMO_USER.name, at: new Date().toISOString() },
-  }
-  exceptionStore.set(id, updated)
-  return structuredClone(updated)
+export async function listCausaciones() {
+  const rawList = await apiFetch('/causaciones')
+  return rawList
+    .map((c) => ({
+      id: c.id,
+      invoiceId: c.id_factura,
+      contractId: c.id_contrato,
+      estado: c.estado,
+      sugerencia: c.sugerencia,
+      fechaCausacion: c.fecha_causacion,
+    }))
+    .sort((a, b) => Date.parse(b.fechaCausacion) - Date.parse(a.fechaCausacion))
 }
 
 /* -------------------------------------------------------------------------- */
 /* Contratos                                                                   */
 /* -------------------------------------------------------------------------- */
 
-/*
- * Contrato propuesto para el backend:
- *
- *   GET  /contracts               -> lista de contratos
- *   GET  /contracts/:id           -> un contrato (404 si no existe)
- *   POST /contracts/:id/validate  { values, reviewed }  -> contrato actualizado, estado "validated"
- *   POST /contracts/:id/observe   { note }              -> contrato actualizado, estado "observed"
- *
- * El servidor DEBE volver a validar todo (montos, fechas, tipo, que las tres revisiones vengan en
- * true) y decidir por sí mismo quién validó y cuándo, a partir de la sesión: nunca confiar en un
- * "by" o "at" que mande el cliente. Un contrato "validated" no se puede validar ni observar otra vez.
- * `billedToDate` lo calcula contabilidad y NO se acepta desde este formulario.
+/**
+ * Mapea el estado del contrato del backend al estado del frontend.
  */
+const CONTRACT_STATUS_MAP = {
+  'activo': 'pending_review',
+  'pendiente': 'pending_review',
+  'validado': 'validated',
+  'validada': 'validated',
+  'observado': 'observed',
+  'observada': 'observed',
+  'con observaciones': 'observed',
+  'inactivo': 'validated',
+}
 
-const contractStore = new Map(structuredClone(MOCK_CONTRACTS).map((c) => [c.id, c]))
+function mapContractStatus(estado) {
+  if (!estado) return 'pending_review'
+  return CONTRACT_STATUS_MAP[estado.toLowerCase().trim()] ?? 'pending_review'
+}
+
+/**
+ * Mapea la frecuencia del backend a la clave que usa el frontend.
+ */
+const FREQUENCY_MAP = {
+  'mensual': 'monthly',
+  'trimestral': 'quarterly',
+  'anual': 'annual',
+  'pago único': 'one_time',
+  'unico': 'one_time',
+}
+
+function mapFrequency(frecuencia) {
+  if (!frecuencia) return 'monthly'
+  return FREQUENCY_MAP[frecuencia.toLowerCase().trim()] ?? 'monthly'
+}
+
+/**
+ * Transforma un contrato del backend al formato que espera la tabla del frontend.
+ */
+function mapContract(raw) {
+  return {
+    id: raw.id_contrato,
+    contractNumber: raw.id_contrato,
+    counterpartyName: raw.proveedor_id,
+    counterpartyNit: raw.proveedor_nit,
+    object: raw.objeto,
+    type: 'service',
+    amount: Number(raw.valor_total),
+    periodAmount: raw.valor_periodo ? Number(raw.valor_periodo) : null,
+    currency: 'COP',
+    billingFrequency: mapFrequency(raw.frecuencia),
+    startDate: raw.vigencia_inicio,
+    endDate: raw.vigencia_fin,
+    costCenter: raw.centro_costo,
+    status: raw.estado || 'activo',
+  }
+}
 
 /** @returns {Promise<import('./invoiceTypes').Contract[]>} */
 export async function listContracts() {
-  assertMock()
-  await delay()
-  return structuredClone([...contractStore.values()])
+  const rawList = await apiFetch('/contratos')
+  return rawList.map(mapContract)
 }
 
-/** @returns {Promise<import('./invoiceTypes').Contract | null>} */
+/**
+ * Trae un contrato individual por su id_contrato.
+ * @returns {Promise<Object | null>}
+ */
 export async function getContract(id) {
-  assertMock()
-  await delay()
-  const contract = contractStore.get(id)
-  return contract ? structuredClone(contract) : null
+  const rawList = await apiFetch('/contratos')
+  const raw = rawList.find((c) => c.id_contrato === id)
+  if (!raw) return null
+  return mapContract(raw)
 }
 
 /**

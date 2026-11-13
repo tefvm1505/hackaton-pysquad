@@ -104,7 +104,7 @@ const columns = helper.columns([
       </span>
     ),
   }),
-  helper.accessor((row) => STATUS_RANK[row.status], {
+  helper.accessor((row) => row.status || '', {
     id: 'status',
     header: 'Estado',
     cell: ({ row }) => <ContractStatusBadge status={row.original.status} />,
@@ -121,21 +121,30 @@ const columns = helper.columns([
 /* Componente                                                                  */
 /* -------------------------------------------------------------------------- */
 
-const STATUS_FILTERS = [
-  { value: 'all', label: 'Todos' },
-  { value: 'pending_review', label: 'Pendientes' },
-  { value: 'observed', label: 'Observados' },
-  { value: 'validated', label: 'Validados' },
-]
-
 export function ContractsTable({ contracts }) {
   const [status, setStatus] = useState('all')
   const [type, setType] = useState('all')
   const [search, setSearch] = useState('')
 
+  const statusFilters = useMemo(() => {
+    const statuses = new Set()
+    for (const c of contracts) {
+      if (c.status) statuses.add(c.status)
+    }
+    const list = [{ value: 'all', label: 'Todos' }]
+    for (const st of statuses) {
+      const label = st.charAt(0).toUpperCase() + st.slice(1)
+      list.push({ value: st, label })
+    }
+    return list
+  }, [contracts])
+
   const counts = useMemo(() => {
-    const result = { all: contracts.length, pending_review: 0, observed: 0, validated: 0 }
-    for (const contract of contracts) result[contract.status] += 1
+    const result = { all: contracts.length }
+    for (const contract of contracts) {
+      const st = contract.status || 'sin_estado'
+      result[st] = (result[st] || 0) + 1
+    }
     return result
   }, [contracts])
 
@@ -160,35 +169,38 @@ export function ContractsTable({ contracts }) {
 
   return (
     <Tabs value={status} onValueChange={setStatus}>
-      {/* Estado: pestañas desde 640px; en móvil, un selector (las 4 pestañas no caben). */}
-      <TabsList variant="neumorphic" aria-label="Filtrar por estado de validación" className="hidden sm:inline-flex">
-        {STATUS_FILTERS.map(({ value, label }) => (
-          <TabsTrigger key={value} value={value} className="gap-1.5">
-            {value !== 'all' && (
-              <span
-                aria-hidden
-                className={cn(
-                  'size-2 rounded-full',
-                  value === 'pending_review' && 'bg-warning',
-                  value === 'observed' && 'bg-danger',
-                  value === 'validated' && 'bg-success',
-                )}
-              />
-            )}
-            {label}
-            <span className="text-xs text-muted-foreground tabular-nums">{counts[value]}</span>
-          </TabsTrigger>
-        ))}
+      {/* Estado: pestañas desde 640px; en móvil, un selector. */}
+      <TabsList variant="neumorphic" aria-label="Filtrar por estado" className="hidden sm:inline-flex">
+        {statusFilters.map(({ value, label }) => {
+          const valNorm = value.toLowerCase()
+          return (
+            <TabsTrigger key={value} value={value} className="gap-1.5">
+              {value !== 'all' && (
+                <span
+                  aria-hidden
+                  className={cn(
+                    'size-2 rounded-full',
+                    valNorm === 'activo' && 'bg-success',
+                    valNorm === 'inactivo' && 'bg-danger',
+                    valNorm !== 'activo' && valNorm !== 'inactivo' && 'bg-warning',
+                  )}
+                />
+              )}
+              {label}
+              <span className="text-xs text-muted-foreground tabular-nums">{counts[value] || 0}</span>
+            </TabsTrigger>
+          )
+        })}
       </TabsList>
       <NativeSelect
-        aria-label="Estado de validación"
+        aria-label="Estado del contrato"
         value={status}
         onChange={(e) => setStatus(e.target.value)}
         wrapperClassName="sm:hidden"
       >
-        {STATUS_FILTERS.map(({ value, label }) => (
+        {statusFilters.map(({ value, label }) => (
           <option key={value} value={value}>
-            {label} ({counts[value]})
+            {label} ({counts[value] || 0})
           </option>
         ))}
       </NativeSelect>
