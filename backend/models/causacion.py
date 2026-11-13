@@ -1,8 +1,12 @@
+"""
+Modelo SQLAlchemy para el registro y trazabilidad de Causaciones contables.
+"""
 from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey
 from sqlalchemy.sql import func
 from config_db import Base
 
 class Causaciones(Base):
+    """Guarda el dictamen, estado de auditoría y sugerencia generada por la IA para cada factura."""
     __tablename__ = "causaciones"
 
     id = Column(Integer, primary_key=True, autoincrement=True, index=True)

@@ -1,12 +1,14 @@
+"""
+Servicio de integración con Inteligencia Artificial (Google Gemini):
+- Auditor experto: redacta el veredicto formal y sugerencia de causación ante hallazgos de facturación.
+- Asistente de análisis de datos: responde preguntas en lenguaje natural sobre contratos, facturas y causaciones.
+"""
 from google import genai
 from google.genai import types
 from config import settings
 from models.usuarios import Usuarios
 from fastapi import HTTPException
-import anthropic
 import json
-from google import genai
-from google.genai import types
 
 client = genai.Client(api_key=settings.api_key)
 
@@ -24,6 +26,10 @@ Explicación: [Un párrafo breve y claro de máximo 3 a 4 líneas donde explique
 4. No inventes cifras, cláusulas ni información que no esté en los datos proporcionados."""
 
 def responder_pregunta(mensaje: list | dict | str):
+    """
+    Envía los hallazgos de la auditoría a Gemini para generar una explicación formal y estructurada
+    con el Estado y la Explicación recomendada para la causación.
+    """
     if isinstance(mensaje, (dict, list, tuple)):
         contenido = json.dumps(mensaje, ensure_ascii=False, indent=2, default=str)
     else:
@@ -58,6 +64,10 @@ Reglas estrictas de formato:
 - No inventes cifras ni asumas estados."""
 
 def consultar_analista_datos(pregunta: str, contexto_db: dict | list) -> str:
+    """
+    Recibe la pregunta de un usuario y el contexto completo de la base de datos (contratos, facturas, OC),
+    y devuelve una respuesta analítica redactada por Gemini.
+    """
     datos_str = json.dumps(contexto_db, ensure_ascii=False, indent=2, default=str)
     
     mensaje_estructurado = (

@@ -1,3 +1,9 @@
+"""
+Servicio de gestión de usuarios y autenticación:
+- Hasheo y verificación de contraseñas mediante bcrypt.
+- Generación y decodificación de tokens JWT.
+- Dependencia de seguridad HTTPBearer para protección de endpoints.
+"""
 from passlib.context import CryptContext
 from models.usuarios import Usuarios
 import jwt
@@ -9,6 +15,7 @@ from config import settings
 security = HTTPBearer()
 
 def crearusuarios(data, db):
+    """Crea y registra un nuevo usuario con contraseña cifrada en la base de datos."""
     buscarusuario = db.query(Usuarios).filter(
         Usuarios.cedula == data.cedula
     ).first()
@@ -35,6 +42,7 @@ def crearusuarios(data, db):
     return "usuario creado con exito"
 
 def create_access_token(rol, user_id: int, expires_minutes: int = 60) -> str:
+    """Genera y firma un token JWT con la cédula del usuario y su rol."""
     now = datetime.now(timezone.utc)
     payload = {
         "sub": str(user_id),  
@@ -45,6 +53,7 @@ def create_access_token(rol, user_id: int, expires_minutes: int = 60) -> str:
     return jwt.encode(payload, settings.secret_key, algorithm=settings.algorithm)
 
 def verificar_token(credentials: HTTPAuthorizationCredentials = Depends(security)):
+    """Dependencia de FastAPI que valida y decodifica el token Bearer en las peticiones entrantes."""
     token = credentials.credentials
     try:
         payload = jwt.decode(token, settings.secret_key, algorithms=[settings.algorithm])
@@ -58,6 +67,7 @@ def verificar_token(credentials: HTTPAuthorizationCredentials = Depends(security
         raise HTTPException(status_code=401, detail="Token inválido")
 
 def verificariniciosesion(data, db):
+    """Valida las credenciales de inicio de sesión (cédula y contraseña) y retorna un JWT."""
     buscarusuario = db.query(Usuarios).filter(
         Usuarios.cedula == data.cedula
     ).first()

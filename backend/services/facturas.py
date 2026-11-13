@@ -1,3 +1,9 @@
+"""
+Servicios auxiliares para facturación:
+- Procesamiento OCR y extracción por expresiones regulares (imágenes y PDFs).
+- Validación de completitud de datos de facturas.
+- Consultas a base de datos de facturas, contratos y causaciones.
+"""
 import os
 import pytesseract
 from PIL import Image
@@ -19,6 +25,10 @@ CAMPOS_REQUERIDOS = [
 ]
 
 def validar_datos_factura(datos: dict):
+    """
+    Comprueba que todos los campos mandatorios y la lista de ítems hayan sido
+    extraídos exitosamente. Si falta alguno, lanza un HTTPException 400.
+    """
     faltantes = []
     for campo in CAMPOS_REQUERIDOS:
         if datos.get(campo) is None or datos.get(campo) == "":
@@ -36,6 +46,10 @@ def validar_datos_factura(datos: dict):
     return datos
 
 def parsear_factura_electronica(texto: str):
+    """
+    Parsea mediante regex el texto extraído por OCR de una factura en formato imagen.
+    Extrae encabezados, fechas, partes, totales e ítems.
+    """
     datos = {
         "emisor": None,
         "nit_emisor": None,
@@ -132,6 +146,10 @@ def parsear_factura_electronica(texto: str):
 
 
 def parsear_factura_pdf(texto: str):
+    """
+    Parsea mediante regex el texto de una factura en formato PDF (distribución tabular/vertical).
+    Extrae encabezados, CUFE, montos e ítems detallados.
+    """
     datos = {
         "emisor": None,
         "nit_emisor": None,
@@ -227,6 +245,7 @@ def parsear_factura_pdf(texto: str):
     return validar_datos_factura(datos)
 
 def ocr_sin_ia(ruta_imagen: str):
+    """Ejecuta OCR sobre una imagen con Tesseract y retorna los datos parseados de la factura."""
     if not os.path.exists(ruta_imagen):
         raise FileNotFoundError(f"No se encontró el archivo: {ruta_imagen}")
 
@@ -236,6 +255,7 @@ def ocr_sin_ia(ruta_imagen: str):
     return parsear_factura_electronica(texto_extraido)
 
 def leer_pdf_facil(ruta_pdf: str) -> str:
+    """Extrae el texto de todas las páginas de un archivo PDF y retorna los datos parseados."""
     lector = PdfReader(ruta_pdf)
     # Extrae el texto de todas las páginas y las junta
     texto = "\n".join([pagina.extract_text() for pagina in lector.pages if pagina.extract_text()])
@@ -243,10 +263,12 @@ def leer_pdf_facil(ruta_pdf: str) -> str:
 
 
 def fila_a_dict(fila):
+    """Convierte un modelo o fila de SQLAlchemy en un diccionario estándar."""
     return {columna.name: getattr(fila, columna.name) for columna in fila.__table__.columns}
 
 
 def traer_facturas(db: Session):
+    """Obtiene todas las facturas y les asigna su estado a partir de su primera causación."""
     facturas = db.query(Facturas).all()
 
     resultado = []
@@ -266,6 +288,7 @@ def traer_facturas(db: Session):
 
 
 def traer_causaciones_por_factura(cufe: str, db: Session):
+    """Consulta todas las causaciones registradas para una factura específica."""
     factura = db.query(Facturas).filter(Facturas.cufe == cufe).first()
     if not factura:
         raise HTTPException(status_code=404, detail=f"No se encontró una factura con el CUFE: {cufe}")
@@ -278,10 +301,12 @@ def traer_causaciones_por_factura(cufe: str, db: Session):
 
 
 def traer_contratos(db: Session):
+    """Retorna la lista de todos los contratos en formato de diccionario."""
     contratos = db.query(Contratos).all()
     return [fila_a_dict(c) for c in contratos]
 
 
 def traer_causaciones(db: Session):
+    """Retorna la lista de todas las causaciones en formato de diccionario."""
     causaciones = db.query(Causaciones).all()
     return [fila_a_dict(c) for c in causaciones]

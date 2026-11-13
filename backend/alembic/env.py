@@ -10,6 +10,7 @@ from models.usuarios import Usuarios
 from models.facturas import Facturas
 from models.contratos import Contratos, Tarifas_Pactadas, Conceptos_Cubiertos
 from models.causacion import Causaciones
+from models.ordenescompra import OrdenCompra, ItemOrdenCompra
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

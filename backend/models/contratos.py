@@ -1,7 +1,11 @@
+"""
+Modelos SQLAlchemy para Contratos, Tarifas Pactadas y Conceptos Cubiertos.
+"""
 from sqlalchemy import Column, Integer, String, Date, ForeignKey, Numeric
 from config_db import Base
 
 class Contratos(Base):
+    """Representa el marco contractual con un proveedor (montos, vigencia, periodicidad y centro de costos)."""
     __tablename__ = "contratos"
 
     id_contrato = Column(String(200), primary_key=True, autoincrement=False, index=True)
@@ -17,6 +21,7 @@ class Contratos(Base):
     estado = Column(String(20), default="activo", nullable=True)
 
 class Tarifas_Pactadas(Base):
+    """Tarifas y precios máximos acordados en el contrato para cada concepto o ítem."""
     __tablename__ = "tarifaspactadas"
 
     id = Column(Integer, primary_key=True, autoincrement=True, index=True)
@@ -26,6 +31,7 @@ class Tarifas_Pactadas(Base):
 
 
 class Conceptos_Cubiertos(Base):
+    """Conceptos o rubros cubiertos autorizados por el contrato."""
     __tablename__ = "conceptoscubiertos"
 
     id = Column(Integer, primary_key=True, autoincrement=True, index=True)

@@ -1,7 +1,11 @@
+"""
+Modelos SQLAlchemy para Facturas electrónicas y sus líneas de detalle (ítems).
+"""
 from sqlalchemy import Column, Integer, String, Date, ForeignKey, Numeric
 from config_db import Base
 
 class Facturas(Base):
+    """Entidad principal que almacena las facturas electrónicas procesadas."""
     __tablename__ = "facturas"
 
     cufe = Column(String(100), primary_key=True, index=True)
@@ -21,6 +25,7 @@ class Facturas(Base):
 
 
 class ItemsFactura(Base):
+    """Detalle de productos o servicios incluidos en una factura."""
     __tablename__ = "itemsfactura"
 
     id = Column(Integer, primary_key=True, autoincrement=True, index=True)

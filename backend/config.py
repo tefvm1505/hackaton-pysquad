@@ -1,7 +1,12 @@
+"""
+Configuración global de la aplicación basada en Pydantic Settings.
+Lee las variables de entorno desde el archivo .env (base de datos, JWT y Gemini API).
+"""
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
+    """Mapea y valida las variables de configuración del sistema."""
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
