@@ -1,5 +1,6 @@
 import { useRef } from 'react'
 import { useEyeTracking } from '@/hooks/useEyeTracking'
+import { cn } from '@/lib/utils'
 
 const VIEW_W = 420
 const VIEW_H = 340
@@ -42,17 +43,42 @@ function sheetPath({ x, y, w, h }) {
   ].join(' ')
 }
 
-function Eye({ cx, cy }) {
+/**
+ * Ojo con esclerótica y pupila. Al cerrarse se aplasta de arriba abajo hasta desaparecer y,
+ * justo después, aparece una línea curva (el ojo cerrado). `data-eye` va en la parte que se
+ * aplasta: su centro no cambia, así que el seguimiento del puntero sigue apuntando bien al
+ * reabrirse. Con "reducir movimiento" el cambio es instantáneo.
+ */
+function Eye({ cx, cy, closed }) {
   return (
-    <g data-eye>
-      <circle cx={cx} cy={cy} r={EYE_R} fill="#fff" />
-      <circle
-        data-pupil
-        cx={cx}
-        cy={cy}
-        r={PUPIL_R}
-        fill={INK}
-        style={{ transition: 'transform 90ms ease-out' }}
+    <g>
+      <g
+        data-eye
+        className={cn(
+          'origin-center transition-transform duration-200 ease-in-out [transform-box:fill-box] motion-reduce:transition-none',
+          closed ? 'scale-y-0' : 'scale-y-100',
+        )}
+      >
+        <circle cx={cx} cy={cy} r={EYE_R} fill="#fff" />
+        <circle
+          data-pupil
+          cx={cx}
+          cy={cy}
+          r={PUPIL_R}
+          fill={INK}
+          style={{ transition: 'transform 90ms ease-out' }}
+        />
+      </g>
+      <path
+        d={`M${cx - 11},${cy - 1} Q${cx},${cy + 9} ${cx + 11},${cy - 1}`}
+        fill="none"
+        stroke={INK}
+        strokeWidth="3.5"
+        strokeLinecap="round"
+        className={cn(
+          'transition-opacity duration-150 motion-reduce:transition-none',
+          closed ? 'opacity-100 delay-150' : 'opacity-0',
+        )}
       />
     </g>
   )
@@ -79,7 +105,7 @@ function Mouth({ type, cx, cy, accent }) {
 }
 
 function Invoice(sheet) {
-  const { x, y, w, fill, accent, eyeY, mouth, mouthY, lines, linesY } = sheet
+  const { x, y, w, fill, accent, eyeY, mouth, mouthY, lines, linesY, eyesClosed } = sheet
   const gap = Math.min(40, w * 0.42)
   const cx = x + w / 2
 
@@ -93,8 +119,8 @@ function Invoice(sheet) {
         fillOpacity="0.14"
       />
 
-      <Eye cx={cx - gap / 2} cy={y + eyeY} />
-      <Eye cx={cx + gap / 2} cy={y + eyeY} />
+      <Eye cx={cx - gap / 2} cy={y + eyeY} closed={eyesClosed} />
+      <Eye cx={cx + gap / 2} cy={y + eyeY} closed={eyesClosed} />
       <Mouth type={mouth} cx={cx} cy={y + mouthY} accent={accent} />
 
       {/* Líneas de "texto" de la factura */}
@@ -115,10 +141,11 @@ function Invoice(sheet) {
 }
 
 /**
- * Ilustración decorativa: facturas con ojos que siguen el puntero.
+ * Ilustración decorativa: facturas con ojos que siguen el puntero. Con `eyesClosed` cierran los
+ * ojos (el login lo usa mientras se escribe la contraseña).
  * Es solo adorno, por eso se oculta a lectores de pantalla.
  */
-export function InvoiceCharacters({ className }) {
+export function InvoiceCharacters({ className, eyesClosed = false }) {
   const svgRef = useRef(null)
   useEyeTracking(svgRef)
 
@@ -131,7 +158,7 @@ export function InvoiceCharacters({ className }) {
       focusable="false"
     >
       {INVOICES.map((sheet) => (
-        <Invoice key={sheet.id} {...sheet} />
+        <Invoice key={sheet.id} {...sheet} eyesClosed={eyesClosed} />
       ))}
     </svg>
   )

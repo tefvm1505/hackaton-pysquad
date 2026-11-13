@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { IdCard } from 'lucide-react'
 import { useForm } from 'react-hook-form'
@@ -23,6 +24,13 @@ function FieldError({ id, message }) {
 
 export default function LoginPage() {
   const { signIn } = useAuth()
+
+  // Las facturas cierran los ojos mientras el mouse está sobre la contraseña o el campo tiene
+  // el foco (así también se cierran con teclado y en pantallas táctiles, donde no hay "hover").
+  const [passwordHovered, setPasswordHovered] = useState(false)
+  const [passwordFocused, setPasswordFocused] = useState(false)
+  const eyesClosed = passwordHovered || passwordFocused
+
   const {
     register,
     handleSubmit,
@@ -54,7 +62,7 @@ export default function LoginPage() {
     <div className="grid overflow-hidden rounded-[2rem] bg-muted p-3 md:min-h-[30rem] md:grid-cols-[1.1fr_1fr] md:p-4">
       {/* Una sola ilustración: arriba y pequeña en móvil, columna izquierda desde 768px. */}
       <div className="flex items-center justify-center px-4 pt-4 pb-5 md:p-6">
-        <InvoiceCharacters className="w-40 sm:w-52 md:w-full md:max-w-md" />
+        <InvoiceCharacters className="w-40 sm:w-52 md:w-full md:max-w-md" eyesClosed={eyesClosed} />
       </div>
 
       <div className="flex flex-col justify-center rounded-3xl bg-background p-6 shadow-sm sm:p-8 md:p-10">
@@ -89,13 +97,26 @@ export default function LoginPage() {
 
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="contraseña">Contraseña</Label>
-            <PasswordInput
-              id="contraseña"
-              autoComplete="current-password"
-              aria-invalid={Boolean(errors.contraseña)}
-              aria-describedby={errors.contraseña ? 'contraseña-error' : undefined}
-              {...register('contraseña')}
-            />
+            {/* Los eventos de foco "suben" desde el campo y desde el botón de mostrar/ocultar, así
+                que este contenedor cubre toda la casilla. `register` ya usa onBlur en el input;
+                por eso los oyentes van aquí y no en el input. */}
+            <div
+              onPointerEnter={() => setPasswordHovered(true)}
+              onPointerLeave={() => setPasswordHovered(false)}
+              onFocus={() => setPasswordFocused(true)}
+              onBlur={(event) => {
+                // Si el foco pasa al botón de mostrar/ocultar, sigue "dentro" de la casilla.
+                if (!event.currentTarget.contains(event.relatedTarget)) setPasswordFocused(false)
+              }}
+            >
+              <PasswordInput
+                id="contraseña"
+                autoComplete="current-password"
+                aria-invalid={Boolean(errors.contraseña)}
+                aria-describedby={errors.contraseña ? 'contraseña-error' : undefined}
+                {...register('contraseña')}
+              />
+            </div>
             <FieldError id="contraseña-error" message={errors.contraseña?.message} />
           </div>
 
